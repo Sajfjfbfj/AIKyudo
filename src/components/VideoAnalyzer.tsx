@@ -154,6 +154,7 @@ const SPEEDS = [0.25, 0.5, 1.0, 2.0];
 const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({ videoSrc }) => {
   const videoRef  = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const displaySizeRef = useRef({ w: 0, h: 0 });
   const poseRef   = useRef<Pose | null>(null);
   const rafRef    = useRef<number | null>(null);
   const frameRef  = useRef(0);
@@ -337,14 +338,20 @@ const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({ videoSrc }) => {
       minDetectionConfidence:0.5, minTrackingConfidence:0.5 });
 
     pose.onResults((results: Results) => {
-      const ctx=canvas.getContext('2d');
-      if (!ctx||!video) return;
-      // 描画前にキャンバスの描画スケールをリセットしておく
+      const ctx = canvas.getContext('2d');
+      if (!ctx || !video) return;
       const dpr = window.devicePixelRatio || 1;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      // drawImage はCSSピクセル座標で与える（setTransformで内部ピクセルにマッピング）
-      ctx.drawImage(video,0,0, video.videoWidth, video.videoHeight);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const { w: dispW, h: dispH } = displaySizeRef.current;
+      // 描画は表示ピクセル（CSSピクセル）で指定し、setTransformで内部ピクセルにマッピングする
+      const drawW = dispW || (video.videoWidth || 640);
+      const drawH = dispH || (video.videoHeight || 360);
+      try {
+        ctx.drawImage(video, 0, 0, drawW, drawH);
+      } catch (e) {
+        // ignore
+      }
 
       if (results.poseLandmarks) {
         drawPoseOverlay(ctx, results.poseLandmarks, canvas.width, canvas.height);
@@ -361,32 +368,34 @@ const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({ videoSrc }) => {
 
     poseRef.current=pose;
 
-    const onMeta=()=>{
-      // 高解像度ディスプレイ対応：内部ピクセルを devicePixelRatio で拡大
+    const updateCanvasSize = () => {
       const dpr = window.devicePixelRatio || 1;
       const vw = video.videoWidth || 640;
       const vh = video.videoHeight || 360;
-      canvas.width = Math.max(1, Math.round(vw * dpr));
-      canvas.height = Math.max(1, Math.round(vh * dpr));
-      // レイアウト上は幅100%で表示させ高さは自動にする（CSSで制御）
-      canvas.style.width = '100%';
-      canvas.style.height = 'auto';
-      // コンテキストのスケールは描画時に設定する
+      const parent = canvas.parentElement as HTMLElement | null;
+      const containerW = parent && parent.clientWidth ? parent.clientWidth : vw;
+      const ar = vw && vh ? (vw / vh) : (16/9);
+      const displayW = containerW;
+      const displayH = Math.max(1, Math.round(displayW / ar));
+      displaySizeRef.current.w = displayW;
+      displaySizeRef.current.h = displayH;
+      // set CSS display size (CSS pixels)
+      canvas.style.width = `${displayW}px`;
+      canvas.style.height = `${displayH}px`;
+      // set internal pixel buffer according to devicePixelRatio
+      canvas.width = Math.max(1, Math.round(displayW * dpr));
+      canvas.height = Math.max(1, Math.round(displayH * dpr));
+    };
+
+    const onMeta = () => {
+      updateCanvasSize();
       video.play()
         .then(()=>{ setStatus('playing'); startProcessing(); })
         .catch(()=>setStatus('error'));
     };
     video.addEventListener('loadedmetadata', onMeta);
     // ウィンドウリサイズ時にも表示スケールを更新
-    const onResize = () => {
-      const vw = video.videoWidth || 640;
-      const vh = video.videoHeight || 360;
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.max(1, Math.round(vw * dpr));
-      canvas.height = Math.max(1, Math.round(vh * dpr));
-      canvas.style.width = '100%';
-      canvas.style.height = 'auto';
-    };
+    const onResize = () => updateCanvasSize();
     window.addEventListener('resize', onResize);
     video.addEventListener('ended', ()=>setStatus('done'));
     video.addEventListener('error', ()=>setStatus('error'));
