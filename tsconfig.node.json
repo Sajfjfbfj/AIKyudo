@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    /* Project References 用 */
+    "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+
+    /* 基本設定 */
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "types": ["node"],
+    "skipLibCheck": true,
+
+    /* Bundler 用 */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+
+    /* emit を有効にする */
+    "noEmit": true,
+
+    /* 厳格チェック */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  },
+  "include": ["vite.config.ts"]
+}
