@@ -371,3 +371,46 @@ body {
   .analyzer-right { order: 2; }
   .analyzer-left { order: 1; }
 }
+
+/* Mobile portrait: hide side eval panel to prioritize video; provide toggle */
+.mobile-eval-toggle {
+  display: none;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 40;
+  background: rgba(8,12,20,0.75);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+@media (max-width: 480px) and (orientation: portrait) {
+  /* hide eval panel by default to maximize canvas space */
+  .eval-section { display: none; }
+
+  /* show toggle button */
+  .mobile-eval-toggle { display: block; }
+
+  /* when toggle is active, show eval as an overlay panel */
+  .analyzer-wrap.eval-show-eval .eval-section {
+    display: block;
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    top: 80px;
+    bottom: 80px;
+    z-index: 45;
+    overflow: auto;
+    border-radius: 10px;
+    padding: 16px;
+    background: var(--bg-card);
+  }
+
+  /* allow canvas to grow taller when eval is hidden */
+  .pose-canvas { max-height: calc(100vh - 120px); }
+}

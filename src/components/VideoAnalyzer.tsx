@@ -168,6 +168,8 @@ const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({ videoSrc }) => {
   const [status,       setStatus]       = useState<'loading'|'playing'|'done'|'error'>('loading');
   const [evaluation,   setEvaluation]   = useState<FormEvaluation | null>(null);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
+  // モバイル：縦表示で評価パネルを隠す/表示するトグル
+  const [mobileEvalVisible, setMobileEvalVisible] = useState(false);
 
   // ── リプレイ状態 ──────────────────────────────────────────────
   const [isReplaying,   setIsReplaying]   = useState(false);
@@ -417,7 +419,7 @@ const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({ videoSrc }) => {
   }, [status, frameAngles]);
 
   return (
-    <div className="analyzer-wrap">
+    <div className={`analyzer-wrap ${mobileEvalVisible ? 'eval-show-eval' : ''}`}>
       <video ref={videoRef} crossOrigin="anonymous" playsInline muted
         style={{ position:'absolute', width:1, height:1, opacity:0, pointerEvents:'none' }} />
 
@@ -451,6 +453,15 @@ const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({ videoSrc }) => {
       {/* キャンバス（解析完了後のみ表示） */}
       <canvas ref={canvasRef} className="pose-canvas"
         style={{ display: status==='done'?'block':'none' }} />
+
+      {/* モバイル向け：評価パネルの表示切替ボタン（CSSで大画面は非表示） */}
+      <button
+        className="mobile-eval-toggle"
+        onClick={() => setMobileEvalVisible(v => !v)}
+        aria-pressed={mobileEvalVisible}
+      >
+        {mobileEvalVisible ? '評価を隠す' : '評価を見る'}
+      </button>
 
 
       {/* ══ リプレイコントロール（解析完了後のみ） ══ */}
