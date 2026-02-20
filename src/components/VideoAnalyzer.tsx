@@ -339,8 +339,12 @@ const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({ videoSrc }) => {
     pose.onResults((results: Results) => {
       const ctx=canvas.getContext('2d');
       if (!ctx||!video) return;
+      // 描画前にキャンバスの描画スケールをリセットしておく
+      const dpr = window.devicePixelRatio || 1;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0,0,canvas.width,canvas.height);
-      ctx.drawImage(video,0,0,canvas.width,canvas.height);
+      // drawImage はCSSピクセル座標で与える（setTransformで内部ピクセルにマッピング）
+      ctx.drawImage(video,0,0, video.videoWidth, video.videoHeight);
 
       if (results.poseLandmarks) {
         drawPoseOverlay(ctx, results.poseLandmarks, canvas.width, canvas.height);
@@ -358,13 +362,32 @@ const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({ videoSrc }) => {
     poseRef.current=pose;
 
     const onMeta=()=>{
-      canvas.width=video.videoWidth||640;
-      canvas.height=video.videoHeight||360;
+      // 高解像度ディスプレイ対応：内部ピクセルを devicePixelRatio で拡大
+      const dpr = window.devicePixelRatio || 1;
+      const vw = video.videoWidth || 640;
+      const vh = video.videoHeight || 360;
+      canvas.width = Math.max(1, Math.round(vw * dpr));
+      canvas.height = Math.max(1, Math.round(vh * dpr));
+      // レイアウト上は幅100%で表示させ高さは自動にする（CSSで制御）
+      canvas.style.width = '100%';
+      canvas.style.height = 'auto';
+      // コンテキストのスケールは描画時に設定する
       video.play()
         .then(()=>{ setStatus('playing'); startProcessing(); })
         .catch(()=>setStatus('error'));
     };
     video.addEventListener('loadedmetadata', onMeta);
+    // ウィンドウリサイズ時にも表示スケールを更新
+    const onResize = () => {
+      const vw = video.videoWidth || 640;
+      const vh = video.videoHeight || 360;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.round(vw * dpr));
+      canvas.height = Math.max(1, Math.round(vh * dpr));
+      canvas.style.width = '100%';
+      canvas.style.height = 'auto';
+    };
+    window.addEventListener('resize', onResize);
     video.addEventListener('ended', ()=>setStatus('done'));
     video.addEventListener('error', ()=>setStatus('error'));
     video.src=videoSrc; video.load();
@@ -373,6 +396,7 @@ const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({ videoSrc }) => {
       if (rafRef.current)       { cancelAnimationFrame(rafRef.current);       rafRef.current=null; }
       if (replayRafRef.current) { cancelAnimationFrame(replayRafRef.current); replayRafRef.current=null; }
       video.pause(); pose.close();
+      window.removeEventListener('resize', onResize);
     };
   }, [videoSrc, startProcessing]);
 
