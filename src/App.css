@@ -319,3 +319,22 @@ body {
   .eval-total-row { gap: 20px; }
   .replay-speed-group { margin-left: 0; }
 }
+
+/* ===== Analyzer two-column layout (info-focused) ===== */
+.analyzer-grid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 20px;
+  align-items: start;
+}
+.analyzer-left { display: flex; flex-direction: column; gap: 16px; }
+.analyzer-right { display: flex; flex-direction: column; gap: 12px; }
+.panel { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+.video-panel { padding: 8px; }
+.chart-panel { margin-top: 8px; }
+
+@media (max-width: 980px) {
+  .analyzer-grid { grid-template-columns: 1fr; }
+  .analyzer-right { order: 2; }
+  .analyzer-left { order: 1; }
+}

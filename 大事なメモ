@@ -1,3 +1,7 @@
-git remote add origin https://github.com/Sajfjfbfj/AIKyudo.git
-git branch -M main
-git push -u origin main
+git pull origin main
+
+git add .
+
+git commit -m "説明メッセージ"
+
+git push origin main

@@ -189,106 +189,101 @@ const VideoAnalyzer: React.FC<VideoAnalyzerProps> = ({ videoSrc }) => {
 
   // ── 解析ループ ─────────────────────────────────────────────────
   const startProcessing = useCallback(() => {
-    const video=videoRef.current, canvas=canvasRef.current, pose=poseRef.current;
-    if (!video||!canvas||!pose) return;
+    const video = videoRef.current;
+    const pose = poseRef.current;
+    if (!video || !pose) return;
 
     const loop = async () => {
-      if (!video||video.ended) { setStatus('done'); return; }
-      if (video.paused)        { rafRef.current=requestAnimationFrame(loop); return; }
-      if (procRef.current)     { rafRef.current=requestAnimationFrame(loop); return; }
-      procRef.current=true;
-      try { await pose.send({ image: video }); } catch {}
-      procRef.current=false;
-      rafRef.current=requestAnimationFrame(loop);
+      if (!video || !pose) return;
+      if (video.paused || video.ended) {
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
+      try {
+        await pose.send({ image: video });
+      } catch (e) {
+        // ignore send errors during processing
+      }
+      rafRef.current = requestAnimationFrame(loop);
     };
-    rafRef.current=requestAnimationFrame(loop);
+
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(loop);
   }, []);
 
-  // ── リプレイループ（保存済みランドマークを再描画）───────────────
+  const toggleReplayPause = useCallback(() => {
+    const next = !replayPausedRef.current;
+    replayPausedRef.current = next;
+    setReplayPaused(next);
+  }, []);
+
   const stopReplay = useCallback(() => {
-    if (replayRafRef.current) { cancelAnimationFrame(replayRafRef.current); replayRafRef.current=null; }
+    if (replayRafRef.current) { cancelAnimationFrame(replayRafRef.current); replayRafRef.current = null; }
     setIsReplaying(false);
     setReplayPaused(false);
-    replayPausedRef.current=false;
+    replayPausedRef.current = false;
   }, []);
 
   const startReplay = useCallback((startIdx = 0, speed = replaySpeed) => {
-    const canvas=canvasRef.current;
-    const video=videoRef.current;
-    if (!canvas||!video||storedFramesRef.current.length===0) return;
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    if (!canvas || !video || storedFramesRef.current.length === 0) return;
 
     if (replayRafRef.current) cancelAnimationFrame(replayRafRef.current);
 
-    replayIdxRef.current=startIdx;
+    replayIdxRef.current = startIdx;
     setIsReplaying(true);
     setReplayPaused(false);
-    replayPausedRef.current=false;
+    replayPausedRef.current = false;
 
-    const stored=storedFramesRef.current;
-    const ctx=canvas.getContext('2d');
+    const stored = storedFramesRef.current;
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // フレーム間の時間差を速度で割って待機
     let lastRealTime: number | null = null;
     let lastFrameTime = stored[startIdx]?.timeMs ?? 0;
 
     const loop = (now: number) => {
-      if (replayPausedRef.current) { replayRafRef.current=requestAnimationFrame(loop); return; }
+      if (replayPausedRef.current) { replayRafRef.current = requestAnimationFrame(loop); return; }
 
-      const idx=replayIdxRef.current;
+      const idx = replayIdxRef.current;
       if (idx >= stored.length) { stopReplay(); return; }
 
-      // 前フレームからの経過時間（実時間）
-      if (lastRealTime === null) lastRealTime=now;
-      const realElapsed=(now-lastRealTime);
-      lastRealTime=now;
+      if (lastRealTime === null) lastRealTime = now;
+      const realElapsed = (now - lastRealTime);
+      lastRealTime = now;
 
-      // 動画時間でどこまで進むか
       lastFrameTime += realElapsed * speed;
 
-      // lastFrameTime に対応するフレームを探す
-      let nextIdx=idx;
-      while (nextIdx < stored.length-1 && stored[nextIdx].timeMs <= lastFrameTime) nextIdx++;
+      let nextIdx = idx;
+      while (nextIdx < stored.length - 1 && stored[nextIdx].timeMs <= lastFrameTime) nextIdx++;
 
-      replayIdxRef.current=nextIdx;
+      replayIdxRef.current = nextIdx;
       setReplayFrame(nextIdx);
 
-      const frame=stored[nextIdx];
-      const targetTimeMs=frame.timeMs;
+      const frame = stored[nextIdx];
+      const targetTimeMs = frame.timeMs;
       video.currentTime = targetTimeMs / 1000;
 
-      // canvas に描画
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      
-      // 動画フレームを描画
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       try {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       } catch (e) {
-        // ビデオフレームが利用できない場合は背景色を使用
-        ctx.fillStyle='#0a0f1e';
-        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle = '#0a0f1e';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      // フレーム番号表示
-      ctx.fillStyle='rgba(255,255,255,0.15)';
-      ctx.font=`12px 'IBM Plex Mono', monospace`;
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.font = `12px 'IBM Plex Mono', monospace`;
       ctx.fillText(`FRAME ${frame.frame}`, 12, 20);
 
-      // 骨格描画
       drawPoseOverlay(ctx, frame.landmarks, canvas.width, canvas.height);
 
-      replayRafRef.current=requestAnimationFrame(loop);
+      replayRafRef.current = requestAnimationFrame(loop);
     };
 
-    replayRafRef.current=requestAnimationFrame(loop);
+    replayRafRef.current = requestAnimationFrame(loop);
   }, [replaySpeed, stopReplay]);
-
-  // リプレイ一時停止/再開
-  const toggleReplayPause = () => {
-    const next=!replayPausedRef.current;
-    replayPausedRef.current=next;
-    setReplayPaused(next);
-  };
 
   // シークバー変更
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
