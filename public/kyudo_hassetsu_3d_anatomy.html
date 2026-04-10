@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>射法八節 3D 解剖学ビューア</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<style>
+:root {
+  --bg-primary: #0d1a2a;
+  --bg-secondary: #152238;
+  --bg-tertiary: #1e3050;
+  --bg-card: #182d48;
+  --border: rgba(255,255,255,0.12);
+  --border-active: #3a8fd4;
+  --text-primary: #e8f0fa;
+  --text-secondary: #a0b8d0;
+  --text-tertiary: #6a8aaa;
+  --accent: #2a7cc7;
+  --accent-glow: rgba(42,124,199,0.4);
+  --muscle-prime: #e85020;
+  --muscle-synergy: #2088d0;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg-primary); color: var(--text-primary); font-family: 'Helvetica Neue', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; }
+
+.app { max-width: 520px; margin: 0 auto; padding: 8px; }
+
+/* Header */
+.header { text-align: center; padding: 12px 0 8px; }
+.header h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.04em; }
+.header p { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+
+/* Step buttons */
+.steps { display: flex; gap: 4px; padding: 6px 4px; flex-wrap: wrap; justify-content: center; background: var(--bg-secondary); border-radius: var(--radius) var(--radius) 0 0; border: 0.5px solid var(--border); border-bottom: none; }
+.step-btn { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: transparent; cursor: pointer; font-size: 12px; color: var(--text-primary); white-space: nowrap; transition: all 0.2s; font-family: inherit; }
+.step-btn:hover { background: var(--bg-tertiary); border-color: rgba(255,255,255,0.25); }
+.step-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+
+/* 3D Canvas */
+.canvas-wrap { position: relative; width: 100%; background: var(--bg-primary); border-left: 0.5px solid var(--border); border-right: 0.5px solid var(--border); }
+#canvas3d { display: block; width: 100%; height: 520px; cursor: grab; }
+#canvas3d:active { cursor: grabbing; }
+
+.layer-btns { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 5px; }
+.layer-btn { padding: 5px 10px; border: 0.5px solid rgba(255,255,255,0.2); border-radius: var(--radius-sm); background: rgba(0,0,0,0.5); cursor: pointer; font-size: 11px; color: rgba(255,255,255,0.65); font-family: inherit; transition: all 0.2s; }
+.layer-btn.on { background: rgba(42,124,199,0.6); color: #fff; border-color: var(--border-active); }
+
+.canvas-hint { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; font-size: 10px; color: rgba(255,255,255,0.25); pointer-events: none; }
+
+#loading-status { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.75); color: #7ab8f5; padding: 12px 20px; border-radius: 8px; font-size: 13px; pointer-events: none; display: none; text-align: center; }
+
+/* Info panel */
+.info { width: 100%; background: var(--bg-secondary); border: 0.5px solid var(--border); border-top: none; border-radius: 0 0 var(--radius) var(--radius); padding: 12px 14px 14px; }
+.pose-name { font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.pose-desc { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.6; }
+
+.section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-tertiary); margin-bottom: 5px; margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+.section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* Muscle chips */
+.muscle-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.muscle-chip { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-primary); background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 4px 10px 4px 6px; cursor: pointer; transition: all 0.2s; user-select: none; font-family: inherit; }
+.muscle-chip:hover { border-color: rgba(255,255,255,0.35); background: var(--bg-tertiary); transform: translateY(-1px); }
+.muscle-chip.selected { background: rgba(42,124,199,0.15); border-color: var(--border-active); box-shadow: 0 0 0 1.5px var(--border-active), 0 0 12px var(--accent-glow); color: #fff; }
+.chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.chip-role { font-size: 9px; opacity: 0.5; margin-left: 2px; }
+
+/* Bone tags */
+.bone-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 4px; }
+.bone-tag { font-size: 11px; color: var(--text-secondary); background: var(--bg-tertiary); border-radius: 4px; padding: 3px 8px; cursor: pointer; transition: all 0.2s; user-select: none; border: 0.5px solid transparent; }
+.bone-tag:hover { background: #2a4d6a; color: #fff; }
+.bone-tag.selected { background: rgba(42,124,199,0.15); border-color: var(--border-active); color: #7ac8f5; box-shadow: 0 0 8px var(--accent-glow); }
+
+.ref-text { font-size: 10px; color: var(--text-tertiary); margin-top: 8px; font-style: italic; }
+.hint-text { font-size: 10px; color: rgba(42,124,199,0.6); margin-top: 5px; display: none; }
+.hint-text.visible { display: block; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>射法八節 3D 解剖学ビューア</h1>
+    <p>Kyudo Shahou-Hassetsu Anatomy Viewer</p>
+  </div>
+
+  <div class="steps" id="step-buttons"></div>
+
+  <div class="canvas-wrap">
+    <canvas id="canvas3d"></canvas>
+    <div class="layer-btns">
+      <button class="layer-btn on" id="lb-sk" onclick="toggleLayer('sk')">骨格</button>
+      <button class="layer-btn on" id="lb-mu" onclick="toggleLayer('mu')">筋肉</button>
+    </div>
+    <div class="canvas-hint">ドラッグ回転 / スクロールズーム</div>
+    <div id="loading-status"></div>
+  </div>
+
+  <div class="info">
+    <div class="pose-name" id="pose-name"></div>
+    <div class="pose-desc" id="pose-desc"></div>
+    <div class="section-label">主要筋肉（クリックでフォーカス）</div>
+    <div class="muscle-chips" id="muscle-chips"></div>
+    <div class="section-label" style="margin-top:10px">解剖学的ポイント</div>
+    <div class="bone-tags" id="bone-tags"></div>
+    <div class="ref-text" id="ref-text"></div>
+    <div class="hint-text" id="hint-text">クリックでフォーカス解除 / 別の筋肉をクリックで切替</div>
+  </div>
+</div>
+
+<script>
+const D = Math.PI / 180;
+
+// ── Body constants (170cm reference) ──
+const HIP_Y = 0.90;
+const SH_LOC = 0.50;
+const UA_L = 0.32;
+const FA_L = 0.27;
+const TH_L = 0.44;
+const SH_L = 0.40;
+
+// ── Muscle region mapping ──
+// Each muscle is mapped to body regions using normalized coordinates
+// The model spans roughly: X[-0.11, 0.11], Y[-0.5, 0.5], Z[-0.22, 0.22]
+// Y: -0.5=feet, 0=hip, 0.5=head  X: left/right  Z: front/back
+const MUSCLE_REGIONS = {
+  "中殿筋": [
+    { cx:0.06, cy:-0.02, cz:0.00, rx:0.04, ry:0.06, rz:0.06, side:'left' },
+    { cx:-0.06, cy:-0.02, cz:0.00, rx:0.04, ry:0.06, rz:0.06, side:'right' }
+  ],
+  "大腿四頭筋": [
+    { cx:0.04, cy:-0.18, cz:-0.04, rx:0.03, ry:0.12, rz:0.04, side:'left' },
+    { cx:-0.04, cy:-0.18, cz:-0.04, rx:0.03, ry:0.12, rz:0.04, side:'right' }
+  ],
+  "脊柱起立筋": [
+    { cx:0.00, cy:0.12, cz:0.05, rx:0.04, ry:0.18, rz:0.03 }
+  ],
+  "前脛骨筋": [
+    { cx:0.035, cy:-0.36, cz:-0.03, rx:0.02, ry:0.08, rz:0.03, side:'left' },
+    { cx:-0.035, cy:-0.36, cz:-0.03, rx:0.02, ry:0.08, rz:0.03, side:'right' }
+  ],
+  "腹横筋": [
+    { cx:0.00, cy:0.02, cz:-0.04, rx:0.06, ry:0.08, rz:0.04 }
+  ],
+  "多裂筋": [
+    { cx:0.00, cy:0.06, cz:0.05, rx:0.03, ry:0.10, rz:0.02 }
+  ],
+  "腸腰筋": [
+    { cx:0.03, cy:-0.02, cz:-0.04, rx:0.03, ry:0.06, rz:0.03, side:'left' },
+    { cx:-0.03, cy:-0.02, cz:-0.04, rx:0.03, ry:0.06, rz:0.03, side:'right' }
+  ],
+  "前鋸筋": [
+    { cx:0.07, cy:0.15, cz:-0.01, rx:0.03, ry:0.06, rz:0.04, side:'left' },
+    { cx:-0.07, cy:0.15, cz:-0.01, rx:0.03, ry:0.06, rz:0.04, side:'right' }
+  ],
+  "回旋筋腱板": [
+    { cx:0.08, cy:0.26, cz:0.02, rx:0.03, ry:0.04, rz:0.04, side:'left' },
+    { cx:-0.08, cy:0.26, cz:0.02, rx:0.03, ry:0.04, rz:0.04, side:'right' }
+  ],
+  "橈側手根屈筋": [
+    { cx:0.16, cy:0.18, cz:-0.01, rx:0.02, ry:0.06, rz:0.02, side:'left' },
+    { cx:-0.16, cy:0.18, cz:-0.01, rx:0.02, ry:0.06, rz:0.02, side:'right' }
+  ],
+  "僧帽筋下部": [
+    { cx:0.00, cy:0.20, cz:0.05, rx:0.06, ry:0.06, rz:0.03 }
+  ],
+  "僧帽筋中部": [
+    { cx:0.00, cy:0.24, cz:0.05, rx:0.07, ry:0.04, rz:0.03 }
+  ],
+  "僧帽筋上部": [
+    { cx:0.00, cy:0.30, cz:0.03, rx:0.06, ry:0.04, rz:0.03 }
+  ],
+  "三角筋前部": [
+    { cx:0.09, cy:0.27, cz:-0.03, rx:0.03, ry:0.04, rz:0.03, side:'left' },
+    { cx:-0.09, cy:0.27, cz:-0.03, rx:0.03, ry:0.04, rz:0.03, side:'right' }
+  ],
+  "三角筋後部": [
+    { cx:0.09, cy:0.27, cz:0.03, rx:0.03, ry:0.04, rz:0.03, side:'left' },
+    { cx:-0.09, cy:0.27, cz:0.03, rx:0.03, ry:0.04, rz:0.03, side:'right' }
+  ],
+  "棘上筋": [
+    { cx:0.06, cy:0.30, cz:0.04, rx:0.04, ry:0.02, rz:0.03, side:'left' },
+    { cx:-0.06, cy:0.30, cz:0.04, rx:0.04, ry:0.02, rz:0.03, side:'right' }
+  ],
+  "棘下筋": [
+    { cx:0.06, cy:0.24, cz:0.05, rx:0.04, ry:0.04, rz:0.02, side:'left' },
+    { cx:-0.06, cy:0.24, cz:0.05, rx:0.04, ry:0.04, rz:0.02, side:'right' }
+  ],
+  "広背筋": [
+    { cx:0.05, cy:0.10, cz:0.04, rx:0.05, ry:0.10, rz:0.04, side:'left' },
+    { cx:-0.05, cy:0.10, cz:0.04, rx:0.05, ry:0.10, rz:0.04, side:'right' }
+  ],
+  "菱形筋": [
+    { cx:0.03, cy:0.22, cz:0.05, rx:0.03, ry:0.06, rz:0.02, side:'left' },
+    { cx:-0.03, cy:0.22, cz:0.05, rx:0.03, ry:0.06, rz:0.02, side:'right' }
+  ],
+  "上腕三頭筋": [
+    { cx:0.12, cy:0.22, cz:0.02, rx:0.02, ry:0.06, rz:0.02, side:'left' },
+    { cx:-0.12, cy:0.22, cz:0.02, rx:0.02, ry:0.06, rz:0.02, side:'right' }
+  ],
+  "大胸筋": [
+    { cx:0.04, cy:0.24, cz:-0.05, rx:0.05, ry:0.05, rz:0.03, side:'left' },
+    { cx:-0.04, cy:0.24, cz:-0.05, rx:0.05, ry:0.05, rz:0.03, side:'right' }
+  ],
+  "腓腹筋": [
+    { cx:0.03, cy:-0.34, cz:0.02, rx:0.02, ry:0.06, rz:0.03, side:'left' },
+    { cx:-0.03, cy:-0.34, cz:0.02, rx:0.02, ry:0.06, rz:0.03, side:'right' }
+  ]
+};
+
+// Muscle color map
+const MCOLS = {
+  "中殿筋":0xe85020, "大腿四頭筋":0xe06010, "脊柱起立筋":0x2080d0, "前脛骨筋":0x20b080,
+  "多裂筋":0x4060e0, "腹横筋":0xe85020, "腸腰筋":0x20a060,
+  "回旋筋腱板":0x9060d0, "前鋸筋":0xe85020, "橈側手根屈筋":0x2080d0, "僧帽筋下部":0x20a060,
+  "三角筋前部":0xe85020, "棘上筋":0x9060d0, "僧帽筋中部":0x2080d0, "僧帽筋上部":0xc060a0,
+  "広背筋":0xe85020, "菱形筋":0x9060d0, "三角筋後部":0x20a060,
+  "上腕三頭筋":0x2080d0, "棘下筋":0xe0a020, "大胸筋":0x2080d0, "腓腹筋":0x20b080
+};
+
+// ── Shahou Hassetsu pose data (scientifically researched) ──
+// References: 弓道教本, Gray's Anatomy 42nd Ed., Netter's Atlas 7th Ed.,
+// 西園(1987), Richardson et al.(1999), Codman(1934),
+// 日本体育協会スポーツ科学研究室「現代弓道講座」
+const poses = [
+  // ① 足踏み
+  { name:"①足踏み（Ashibumi）",
+    desc:"射の土台。外八文字（約60°）に踏み開き、骨盤を水平に安定させ、重心を両足間に均等配分する。中殿筋が股関節外旋と骨盤水平保持を担い、大腿四頭筋が膝伸展で立位を安定させる。脊柱起立筋が脊柱垂直を維持し、前脛骨筋が足関節の微調整を行う。",
+    muscles:[
+      {n:"中殿筋",    c:"#e85020", r:"主", desc:"股関節外旋・骨盤水平保持"},
+      {n:"大腿四頭筋",c:"#e06010", r:"主", desc:"膝関節伸展・立位安定"},
+      {n:"脊柱起立筋",c:"#2080d0", r:"協", desc:"脊柱垂直保持"},
+      {n:"前脛骨筋",  c:"#20b080", r:"協", desc:"足関節背屈制御"},
+    ],
+    btags:["外八文字60°","骨盤水平","脊柱垂直中立","体重左右均等","足幅＝矢束"],
+    ref:"弓道教本第一巻 / 西園(1987) 弓道立位姿勢の生体力学的研究",
+    a:{ torsoX:0, torsoZ:0, headX:0.05, headY:0,
+        lShX:0.05, lShZ:0.08, lElX:0, lElZ:0.05,
+        rShX:0.05, rShZ:-0.08, rElX:0, rElZ:-0.05, rShY:0,
+        lHipZ:0.35, lKnX:0.02, lFootY:30*D,
+        rHipZ:-0.35, rKnX:0.02, rFootY:-30*D,
+        scapR:0, lScapX:0, rScapX:0, lScapY:0, rScapY:0,
+        hasBow:false, bowLX:0,bowLY:0,bowLZ:0, bowRX:0,bowRY:0,bowRZ:0 }
+  },
+
+  // ② 胴造り
+  { name:"②胴造り（Douzukuri）",
+    desc:"三重十文字（足底・腰・肩が平行）を確立。腹横筋で腹腔内圧(IAP)を高め体幹インナーユニットを安定させる。多裂筋が脊椎を分節的に固定し、脊柱起立筋が垂直伸展を維持。腸腰筋が骨盤の適切な前傾を保ち、上肢の自由な動作を支える垂直軸を形成する。",
+    muscles:[
+      {n:"腹横筋",   c:"#e85020", r:"主", desc:"腹腔内圧(IAP)維持"},
+      {n:"多裂筋",   c:"#4060e0", r:"主", desc:"脊椎分節的安定"},
+      {n:"脊柱起立筋",c:"#2080d0", r:"協", desc:"脊柱垂直伸展"},
+      {n:"腸腰筋",   c:"#20a060", r:"協", desc:"骨盤前傾維持"},
+    ],
+    btags:["三重十文字","腹腔内圧(IAP)上昇","腰椎前彎維持","骨盤中立位","垂直軸確立"],
+    ref:"Richardson et al.(1999) Therapeutic Exercise / 弓道教本第一巻",
+    a:{ torsoX:0, torsoZ:0, headX:0.02, headY:0,
+        lShX:0.04, lShZ:0.06, lElX:0.02, lElZ:0.04,
+        rShX:0.04, rShZ:-0.06, rElX:0.02, rElZ:-0.04, rShY:0,
+        lHipZ:0.35, lKnX:0.02, lFootY:30*D,
+        rHipZ:-0.35, rKnX:0.02, rFootY:-30*D,
+        scapR:0, lScapX:0, rScapX:0, lScapY:0, rScapY:0,
+        hasBow:false, bowLX:0,bowLY:0,bowLZ:0, bowRX:0,bowRY:0,bowRZ:0 }
+  },
+
+  // ③ 弓構え
+  { name:"③弓構え（Yugamae）",
+    desc:"射の準備態勢。前鋸筋が肩甲骨を前方固定（翼状肩甲防止）し、回旋筋腱板が肩甲上腕関節を動的に安定させる。橈側手根屈筋で手の内（天文筋密着）を形成。僧帽筋下部が肩の下制を維持し、すくみ肩を防止する。物見で頸椎C1-C2回旋が入る。",
+    muscles:[
+      {n:"前鋸筋",    c:"#e85020", r:"主", desc:"肩甲骨固定・翼状肩甲防止"},
+      {n:"回旋筋腱板",c:"#9060d0", r:"主", desc:"肩甲上腕関節の動的安定"},
+      {n:"橈側手根屈筋",c:"#2080d0",r:"主", desc:"手の内（天文筋密着）"},
+      {n:"僧帽筋下部",c:"#20a060", r:"協", desc:"肩の下制（すくみ肩防止）"},
+    ],
+    btags:["物見：頸椎C1-C2回旋","手の内：天文筋密着","肩下制で安定","取懸け：指の脱力"],
+    ref:"Netter's Atlas 7th Ed.（肩甲上腕安定機構）/ 弓道教本第一巻",
+    a:{ torsoX:0, torsoZ:0, headX:0, headY:1.50,
+        lShX:-0.65, lShZ:0.20, lElX:0.70, lElZ:0.40,
+        rShX:-0.55, rShZ:-0.40, rElX:0.75, rElZ:-0.50, rShY:0,
+        lHipZ:0.35, lKnX:0.02, lFootY:30*D,
+        rHipZ:-0.35, rKnX:0.02, rFootY:-30*D,
+        scapR:0.15, lScapX:0, rScapX:0, lScapY:0, rScapY:0,
+        hasBow:true,
+        bowLX:-0.30, bowLY:0.40, bowLZ:0.20,
+        bowRX:0.35, bowRY:-0.25, bowRZ:-0.30 }
+  },
+
+  // ④ 打起し
+  { name:"④打起し（Uchiokoshi）",
+    desc:"肩甲上腕リズム（2:1比）を利用し弓を額上45°へ挙上。三角筋前部が屈曲挙上の主働筋として機能し、前鋸筋が肩甲骨上方回旋を担う。棘上筋が挙上初期0-30°の安定化（インピンジメント防止）に関与。僧帽筋上部の過度な関与を抑え、肩を上げない。",
+    muscles:[
+      {n:"三角筋前部",c:"#e85020", r:"主", desc:"屈曲挙上の主働"},
+      {n:"前鋸筋",   c:"#20a060", r:"主", desc:"肩甲骨上方回旋（2:1リズム）"},
+      {n:"棘上筋",   c:"#9060d0", r:"主", desc:"挙上初期の安定化"},
+      {n:"僧帽筋中部",c:"#2080d0", r:"協", desc:"肩甲骨の安定保持"},
+    ],
+    btags:["挙上角：約45°","肩甲上腕リズム2:1","肩を上げない","僧帽筋上部の抑制"],
+    ref:"Codman(1934) 肩甲上腕リズム / Gray's Anatomy 42nd Ed.",
+    a:{ torsoX:-0.03, torsoZ:0, headX:0, headY:1.57,
+        lShX:-0.30, lShZ:1.90, lElX:0.05, lElZ:0.20,
+        rShX:-0.30, rShZ:-2.45, rElX:0.05, rElZ:-0.20, rShY:0,
+        lHipZ:0.35, lKnX:0.02, lFootY:30*D,
+        rHipZ:-0.35, rKnX:0.02, rFootY:-30*D,
+        scapR:0.25, lScapX:0, rScapX:0, lScapY:0.4, rScapY:0,
+        hasBow:true,
+        bowLX:-0.50, bowLY:1.90, bowLZ:0.20,
+        bowRX:-0.15, bowRY:-1.90, bowRZ:-0.20 }
+  },
+
+  // ⑤ 引分け
+  { name:"⑤引分け（Hikiwake）",
+    desc:"大三から口割りへ弓を左右対称に押し開く。広背筋が肩関節の伸展・内転で牽引の主働を担い、菱形筋が肩甲骨内転（背中への引き寄せ）を行う。上腕三頭筋が押手の肘を完全伸展させ、三角筋後部が水平外転を補助する。腕力ではなく背筋で引く。",
+    muscles:[
+      {n:"広背筋",    c:"#e85020", r:"主", desc:"牽引の主働（肩伸展・内転）"},
+      {n:"菱形筋",   c:"#9060d0", r:"主", desc:"肩甲骨内転（背中での引き）"},
+      {n:"上腕三頭筋",c:"#2080d0", r:"主", desc:"押手の肘伸展"},
+      {n:"三角筋後部",c:"#20a060", r:"協", desc:"水平外転補助"},
+    ],
+    btags:["大三→口割り","肩甲骨の内転","左右均等の力","肘で引く意識"],
+    ref:"Netter's Atlas 7th Ed.（肩関節筋群）/ 弓道教本第二巻",
+    a:{ torsoX:0, torsoZ:0.04, headX:0, headY:1.57,
+        lShX:0.20, lShZ:1.57, lElX:0.05, lElZ:0.15,
+        rShX:0.95, rShZ:-1.50, rElX:1.80, rElZ:-1.60, rShY:0,
+        lHipZ:0.35, lKnX:0.02, lFootY:30*D,
+        rHipZ:-0.35, rKnX:0.02, rFootY:-30*D,
+        scapR:0.65, lScapX:0, rScapX:0, lScapY:0, rScapY:0,
+        hasBow:true,
+        bowLX:0.00, bowLY:1.57, bowLZ:0.15,
+        bowRX:0.75, bowRY:-1.50, bowRZ:-1.60 }
+  },
+
+  // ⑥ 会
+  { name:"⑥会（Kai）",
+    desc:"引分け完成形。縦横十文字の規矩を堅持する。物理的静止ではなく、広背筋・菱形筋の等尺性収縮が最大となる「伸び合い」と骨格的充填「詰め合い」の動的均衡状態。回旋筋腱板が関節中心位を保持し、棘下筋の外旋で肩前方脱臼トルクを相殺する。",
+    muscles:[
+      {n:"広背筋",    c:"#e85020", r:"主", desc:"最大等尺性収縮で安定保持"},
+      {n:"菱形筋",   c:"#9060d0", r:"主", desc:"肩甲骨完全内転（詰め合い）"},
+      {n:"回旋筋腱板",c:"#4060e0", r:"主", desc:"関節中心位保持"},
+      {n:"棘下筋",   c:"#e0a020", r:"主", desc:"外旋で前方脱臼トルク相殺"},
+    ],
+    btags:["縦横十文字","伸び合い＋詰め合い","胸弦の接触","気力の充実"],
+    ref:"Gray's Anatomy 42nd Ed. / 弓道教本第二巻",
+    a:{ torsoX:0, torsoZ:0.03, headX:0, headY:1.57,
+        lShX:0.05, lShZ:1.65, lElX:0.02, lElZ:0.05,
+        rShX:1.25, rShZ:-1.80, rElX:2.00, rElZ:-1.80, rShY:0,
+        lHipZ:0.35, lKnX:0.02, lFootY:30*D,
+        rHipZ:-0.35, rKnX:0.02, rFootY:-30*D,
+        scapR:0.95, lScapX:0, rScapX:0, lScapY:0, rScapY:0,
+        hasBow:true,
+        bowLX:-0.15, bowLY:1.65, bowLZ:0.05,
+        bowRX:1.05, bowRY:-1.80, bowRZ:-1.80 }
+  },
+
+  // ⑦ 離れ
+  { name:"⑦離れ（Hanare）",
+    desc:"蓄積エネルギーの解放。背筋の短縮性収縮による胸郭拡大が限界に達し、弦が自然にはじける。広背筋がフォロースルーを生み、前鋸筋が押手を突き出して弓返りを補助。三角筋後部が引手を後方展開させ、大胸筋は拮抗抑制として胸郭開大に関与する。",
+    muscles:[
+      {n:"広背筋",    c:"#e85020", r:"主", desc:"短縮性収縮でフォロースルー"},
+      {n:"前鋸筋",   c:"#9060d0", r:"主", desc:"押手突き出し・弓返り補助"},
+      {n:"三角筋後部",c:"#20a060", r:"主", desc:"引手の後方展開"},
+      {n:"大胸筋",   c:"#2080d0", r:"協", desc:"胸郭開大（拮抗抑制）"},
+    ],
+    btags:["自然の離れ","弓返り","弾性エネルギー解放","両拳の鋭い離れ"],
+    ref:"弓道教本第二巻 / Netter's Atlas 7th Ed.",
+    a:{ torsoX:0, torsoZ:0.02, headX:0, headY:1.57,
+        lShX:0.05, lShZ:2.25, lElX:-0.20, lElZ:0.15,
+        rShX:1.35, rShZ:-0.45, rElX:0.25, rElZ:-0.15, rShY:0,
+        lHipZ:0.35, lKnX:0.02, lFootY:30*D,
+        rHipZ:-0.35, rKnX:0.02, rFootY:-30*D,
+        scapR:0.55, lScapX:0, rScapX:0, lScapY:0, rScapY:0,
+        hasBow:true,
+        bowLX:-0.15, bowLY:2.25, bowLZ:0.15,
+        bowRX:1.15, bowRY:-0.45, bowRZ:-0.15 }
+  },
+
+  // ⑧ 残心
+  { name:"⑧残心（Zanshin）",
+    desc:"射の完成と余韻。離れ後の姿勢を等尺性収縮で堅持する。三角筋後部が水平外転位を保ち、脊柱起立筋が体幹垂直を維持。僧帽筋中部が肩甲骨固定を継続し、中殿筋が下半身の安定を保つ。心身一如の残身は正射の証。",
+    muscles:[
+      {n:"三角筋後部",c:"#20a060", r:"主", desc:"水平外転位の等尺性保持"},
+      {n:"脊柱起立筋",c:"#2080d0", r:"主", desc:"体幹垂直維持"},
+      {n:"僧帽筋中部",c:"#9060d0", r:"主", desc:"肩甲骨固定継続"},
+      {n:"中殿筋",   c:"#e85020", r:"協", desc:"下半身安定維持"},
+    ],
+    btags:["姿勢の堅持","気合の継続","心身一如","矢所の注視"],
+    ref:"弓道教本第一巻・第二巻 / Gray's Anatomy 42nd Ed.",
+    a:{ torsoX:0, torsoZ:0, headX:0, headY:1.57,
+        lShX:0.05, lShZ:2.25, lElX:-0.10, lElZ:0.10,
+        rShX:1.25, rShZ:-0.45, rElX:0.10, rElZ:-0.10, rShY:0,
+        lHipZ:0.35, lKnX:0.02, lFootY:30*D,
+        rHipZ:-0.35, rKnX:0.02, rFootY:-30*D,
+        scapR:0.75, lScapX:0, rScapX:0, lScapY:0, rScapY:0,
+        hasBow:true,
+        bowLX:-0.15, bowLY:2.25, bowLZ:0.15,
+        bowRX:1.05, bowRY:-0.45, bowRZ:-0.15 }
+  }
+];
+
+// ── THREE.js Setup ──
+const canvas = document.getElementById('canvas3d');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.shadowMap.enabled = true;
+renderer.outputEncoding = THREE.sRGBEncoding;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1a2a);
+scene.fog = new THREE.Fog(0x0d1a2a, 9, 20);
+
+const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 50);
+camera.position.set(0, 0.95, 3.3);
+camera.lookAt(0, 0.85, 0);
+
+// Lighting
+scene.add(new THREE.AmbientLight(0x8899cc, 0.7));
+const keyLight = new THREE.DirectionalLight(0xfff5e8, 1.2);
+keyLight.position.set(3, 5, 4); keyLight.castShadow = true; scene.add(keyLight);
+const fillLight = new THREE.DirectionalLight(0x4466aa, 0.45);
+fillLight.position.set(-3, 2, -2); scene.add(fillLight);
+const rimLight = new THREE.DirectionalLight(0x6688ff, 0.22);
+rimLight.position.set(0, 2, -4); scene.add(rimLight);
+
+// Floor
+const floor = new THREE.Mesh(
+  new THREE.CircleGeometry(1.8, 48),
+  new THREE.MeshLambertMaterial({ color: 0x12253a })
+);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+scene.add(new THREE.GridHelper(3.6, 18, 0x1e3858, 0x162840));
+
+// Resize
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight || 520;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(canvas);
+setTimeout(resize, 30);
+
+// Mouse/Touch controls
+let rotY = 0.25, rotX = 0.04, dragging = false, prevX = 0, prevY = 0;
+canvas.addEventListener('mousedown', e => { dragging = true; prevX = e.clientX; prevY = e.clientY; });
+canvas.addEventListener('touchstart', e => { dragging = true; prevX = e.touches[0].clientX; prevY = e.touches[0].clientY; }, { passive: true });
+window.addEventListener('mouseup', () => dragging = false);
+window.addEventListener('touchend', () => dragging = false);
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  rotY += (e.clientX - prevX) * 0.012;
+  rotX += (e.clientY - prevY) * 0.005;
+  rotX = Math.max(-0.55, Math.min(0.75, rotX));
+  prevX = e.clientX; prevY = e.clientY;
+});
+window.addEventListener('touchmove', e => {
+  if (!dragging) return;
+  rotY += (e.touches[0].clientX - prevX) * 0.012;
+  prevX = e.touches[0].clientX;
+}, { passive: true });
+canvas.addEventListener('wheel', e => {
+  camera.position.z = Math.max(1.8, Math.min(6, camera.position.z + e.deltaY * 0.005));
+}, { passive: true });
+
+// ── Scene graph ──
+const root = new THREE.Group();
+scene.add(root);
+
+// ── State ──
+let currentPose = {};
+let targetPose = {};
+let currentStep = 0;
+let selectedMuscle = null;
+let selectedBtag = null;
+let glbModel = null;
+let muscleMesh = null;
+let skeletonMesh = null;
+const glbBones = {};
+const show = { sk: true, mu: true };
+let t = 0;
+
+// Vertex color data for muscle mesh
+let muscleVertexColors = null;
+let muscleBaseColors = null;
+let musclePositions = null;
+
+// ── Bone map for posing ──
+const BONE_MAP = {
+  'Hips':          (m, a) => { m.rotation.x = a.torsoX || 0; m.rotation.z = a.torsoZ || 0; },
+  'Head':          (m, a) => { m.rotation.x = a.headX || 0; m.rotation.y = a.headY || 0; },
+  'LeftShoulder':  (m, a) => { m.rotation.z = a.lScapX || 0; m.rotation.y = a.lScapY || 0; },
+  'RightShoulder': (m, a) => { m.rotation.z = a.rScapX || 0; m.rotation.y = a.rScapY || 0; },
+  'LeftUpperArm':  (m, a) => { m.rotation.x = a.lShX || 0; m.rotation.z = a.lShZ || 0; },
+  'LeftLowerArm':  (m, a) => { m.rotation.x = a.lElX || 0; m.rotation.z = a.lElZ || 0; },
+  'RightUpperArm': (m, a) => { m.rotation.x = a.rShX || 0; m.rotation.z = a.rShZ || 0; m.rotation.y = a.rShY || 0; },
+  'RightLowerArm': (m, a) => { m.rotation.x = a.rElX || 0; m.rotation.z = a.rElZ || 0; },
+  'LeftUpperLeg':  (m, a) => { m.rotation.z = a.lHipZ || 0; m.rotation.y = a.lFootY || 0; },
+  'LeftLowerLeg':  (m, a) => { m.rotation.x = a.lKnX || 0.02; },
+  'RightUpperLeg': (m, a) => { m.rotation.z = a.rHipZ || 0; m.rotation.y = a.rFootY || 0; },
+  'RightLowerLeg': (m, a) => { m.rotation.x = a.rKnX || 0.02; },
+};
+
+// ── UI ──
+function buildStepButtons() {
+  const container = document.getElementById('step-buttons');
+  const labels = ['①足踏み','②胴造り','③弓構え','④打起し','⑤引分け','⑥会','⑦離れ','⑧残心'];
+  container.innerHTML = labels.map((label, i) =>
+    `<button class="step-btn${i === 0 ? ' active' : ''}" onclick="goToStep(${i})">${label}</button>`
+  ).join('');
+}
+
+function updateUI(step) {
+  const p = poses[step];
+  document.getElementById('pose-name').textContent = p.name;
+  document.getElementById('pose-desc').textContent = p.desc;
+
+  document.getElementById('muscle-chips').innerHTML = p.muscles.map(m =>
+    `<div class="muscle-chip" id="chip-${m.n}" onclick="selectMuscle('${m.n}')" title="${m.desc}">` +
+    `<div class="chip-dot" style="background:${m.c}"></div>${m.n}<span class="chip-role">${m.r}働</span></div>`
+  ).join('');
+
+  document.getElementById('bone-tags').innerHTML = p.btags.map((tag, i) =>
+    `<div class="bone-tag" id="btag-${i}" onclick="selectBtag(${i})">📌 ${tag}</div>`
+  ).join('');
+
+  document.getElementById('ref-text').textContent = '参考文献：' + p.ref;
+}
+
+function goToStep(i) {
+  currentStep = i;
+  selectedMuscle = null;
+  selectedBtag = null;
+
+  document.querySelectorAll('.step-btn').forEach((b, j) => b.classList.toggle('active', j === i));
+  document.querySelectorAll('.muscle-chip').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('.bone-tag').forEach(b => b.classList.remove('selected'));
+  document.getElementById('hint-text').classList.remove('visible');
+
+  targetPose = JSON.parse(JSON.stringify(poses[i].a));
+  if (Object.keys(currentPose).length === 0) {
+    currentPose = JSON.parse(JSON.stringify(targetPose));
+  }
+  updateUI(i);
+  applyMuscleColors();
+}
+
+function selectMuscle(name) {
+  if (selectedMuscle === name) {
+    selectedMuscle = null;
+    document.querySelectorAll('.muscle-chip').forEach(c => c.classList.remove('selected'));
+    document.getElementById('hint-text').classList.remove('visible');
+    applyMuscleColors();
+    return;
+  }
+  selectedMuscle = name;
+  selectedBtag = null;
+  document.querySelectorAll('.bone-tag').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.muscle-chip').forEach(c => c.classList.remove('selected'));
+  const el = document.getElementById('chip-' + name);
+  if (el) el.classList.add('selected');
+  document.getElementById('hint-text').classList.add('visible');
+  applyMuscleColors();
+}
+
+function selectBtag(idx) {
+  if (selectedBtag === idx) {
+    selectedBtag = null;
+    document.querySelectorAll('.bone-tag').forEach(b => b.classList.remove('selected'));
+    document.getElementById('hint-text').classList.remove('visible');
+    flashSkeleton(false);
+    return;
+  }
+  selectedBtag = idx;
+  selectedMuscle = null;
+  document.querySelectorAll('.muscle-chip').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('.bone-tag').forEach(b => b.classList.remove('selected'));
+  document.getElementById('btag-' + idx).classList.add('selected');
+  document.getElementById('hint-text').classList.add('visible');
+  applyMuscleColors();
+  flashSkeleton(true);
+  setTimeout(() => flashSkeleton(false), 1200);
+}
+
+// ── Layer toggle ──
+function toggleLayer(key) {
+  show[key] = !show[key];
+  document.getElementById('lb-' + key).classList.toggle('on', show[key]);
+  updateLayerVisibility();
+}
+
+function updateLayerVisibility() {
+  if (muscleMesh) muscleMesh.visible = show.mu;
+  if (skeletonMesh) skeletonMesh.visible = show.sk;
+}
+
+// ── Skeleton flash ──
+function flashSkeleton(on) {
+  if (!skeletonMesh || !skeletonMesh.material) return;
+  if (on) {
+    skeletonMesh.material.emissive.setHex(0x3a8fd4);
+    skeletonMesh.material.emissiveIntensity = 0.8;
+  } else {
+    skeletonMesh.material.emissive.setHex(0x000000);
+    skeletonMesh.material.emissiveIntensity = 0;
+  }
+  skeletonMesh.material.needsUpdate = true;
+}
+
+// ── Muscle vertex coloring ──
+function initMuscleVertexColors() {
+  if (!muscleMesh) return;
+  const geo = muscleMesh.geometry;
+  const posAttr = geo.attributes.position;
+  const count = posAttr.count;
+
+  musclePositions = [];
+  for (let i = 0; i < count; i++) {
+    musclePositions.push({
+      x: posAttr.getX(i),
+      y: posAttr.getY(i),
+      z: posAttr.getZ(i)
+    });
+  }
+
+  // Create vertex color attribute
+  const colors = new Float32Array(count * 3);
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  muscleVertexColors = geo.attributes.color;
+
+  // Set base colors (body default color)
+  muscleBaseColors = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    muscleBaseColors[i * 3] = 0.65;
+    muscleBaseColors[i * 3 + 1] = 0.18;
+    muscleBaseColors[i * 3 + 2] = 0.12;
+  }
+
+  // Enable vertex colors on material
+  muscleMesh.material.vertexColors = true;
+  muscleMesh.material.needsUpdate = true;
+}
+
+function isVertexInRegion(vx, vy, vz, region) {
+  const dx = (vx - region.cx) / region.rx;
+  const dy = (vy - region.cy) / region.ry;
+  const dz = (vz - region.cz) / region.rz;
+  return (dx * dx + dy * dy + dz * dz) <= 1.0;
+}
+
+function getVertexMuscleStrength(vx, vy, vz, regions) {
+  let maxStrength = 0;
+  for (const region of regions) {
+    const dx = (vx - region.cx) / region.rx;
+    const dy = (vy - region.cy) / region.ry;
+    const dz = (vz - region.cz) / region.rz;
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (dist <= 1.0) {
+      const strength = 1.0 - dist;
+      maxStrength = Math.max(maxStrength, strength);
+    }
+  }
+  return maxStrength;
+}
+
+function applyMuscleColors() {
+  if (!muscleVertexColors || !musclePositions) return;
+
+  const p = poses[currentStep];
+  const activeMuscles = p.muscles;
+  const count = musclePositions.length;
+
+  // Determine which muscles are active and their colors
+  const activeRegions = [];
+  for (const m of activeMuscles) {
+    const regions = MUSCLE_REGIONS[m.n];
+    if (regions) {
+      const colorHex = parseInt(m.c.replace('#', ''), 16);
+      const r = ((colorHex >> 16) & 0xFF) / 255;
+      const g = ((colorHex >> 8) & 0xFF) / 255;
+      const b = (colorHex & 0xFF) / 255;
+      activeRegions.push({ name: m.n, regions, r, g, b, role: m.r });
+    }
+  }
+
+  for (let i = 0; i < count; i++) {
+    const vx = musclePositions[i].x;
+    const vy = musclePositions[i].y;
+    const vz = musclePositions[i].z;
+
+    let bestStrength = 0;
+    let bestR = 0, bestG = 0, bestB = 0;
+    let isInAnyActive = false;
+    let isInSelected = false;
+    let selectedStrength = 0;
+
+    for (const ar of activeRegions) {
+      const strength = getVertexMuscleStrength(vx, vy, vz, ar.regions);
+      if (strength > 0) {
+        isInAnyActive = true;
+        if (ar.name === selectedMuscle) {
+          isInSelected = true;
+          selectedStrength = Math.max(selectedStrength, strength);
+        }
+        if (strength > bestStrength) {
+          bestStrength = strength;
+          bestR = ar.r;
+          bestG = ar.g;
+          bestB = ar.b;
+        }
+      }
+    }
+
+    if (selectedMuscle) {
+      // A muscle is focused
+      if (isInSelected) {
+        // This vertex is in the selected muscle - make it bright and vivid
+        const intensity = 0.6 + selectedStrength * 0.4;
+        const selRegions = MUSCLE_REGIONS[selectedMuscle];
+        const selColor = MCOLS[selectedMuscle] || 0xff8844;
+        const sr = ((selColor >> 16) & 0xFF) / 255;
+        const sg = ((selColor >> 8) & 0xFF) / 255;
+        const sb = (selColor & 0xFF) / 255;
+        muscleVertexColors.setXYZ(i, sr * intensity, sg * intensity, sb * intensity);
+      } else {
+        // Not selected muscle - very dim
+        muscleVertexColors.setXYZ(i, 0.08, 0.06, 0.06);
+      }
+    } else if (isInAnyActive) {
+      // No muscle selected, but this vertex is in an active muscle region
+      const intensity = 0.5 + bestStrength * 0.5;
+      muscleVertexColors.setXYZ(i, bestR * intensity, bestG * intensity, bestB * intensity);
+    } else {
+      // Base body color (non-active region) - slightly dimmer
+      muscleVertexColors.setXYZ(i,
+        muscleBaseColors[i * 3] * 0.35,
+        muscleBaseColors[i * 3 + 1] * 0.35,
+        muscleBaseColors[i * 3 + 2] * 0.35
+      );
+    }
+  }
+
+  muscleVertexColors.needsUpdate = true;
+}
+
+// ── GLB Loading ──
+const STATUS = document.getElementById('loading-status');
+function showStatus(msg) { STATUS.style.display = 'block'; STATUS.textContent = msg; }
+function hideStatus() { STATUS.style.display = 'none'; }
+
+function findBone(obj, name) {
+  if (obj.name === name) return obj;
+  for (const c of obj.children) {
+    const r = findBone(c, name);
+    if (r) return r;
+  }
+  return null;
+}
+
+function applyPoseToGLB(a) {
+  for (const [boneName, fn] of Object.entries(BONE_MAP)) {
+    if (glbBones[boneName]) fn(glbBones[boneName], a);
+  }
+}
+
+function loadGLB(url, filename) {
+  showStatus('3Dモデル読み込み中...');
+  const loader = new THREE.GLTFLoader();
+  loader.load(url, (gltf) => {
+    if (glbModel) { root.remove(glbModel); glbModel = null; }
+    glbModel = gltf.scene;
+
+    // Scale and center
+    const box = new THREE.Box3().setFromObject(glbModel);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const scale = 1.70 / size.y;
+    glbModel.scale.setScalar(scale);
+    glbModel.position.y = -box.min.y * scale;
+    glbModel.position.x = -center.x * scale;
+    glbModel.position.z = -center.z * scale;
+
+    // Find bones
+    for (const boneName of Object.keys(BONE_MAP)) {
+      const bone = findBone(glbModel, boneName);
+      if (bone) glbBones[boneName] = bone;
+    }
+
+    // Process meshes
+    glbModel.traverse(obj => {
+      if (obj.isMesh) {
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+
+        // Identify muscle vs skeleton mesh
+        if (obj.name.startsWith('MU_') || (obj.material && obj.material.name && obj.material.name.includes('Muscle'))) {
+          muscleMesh = obj;
+          obj.userData.layer = 'muscle';
+          // Replace material with MeshStandardMaterial for vertex colors
+          const oldMat = obj.material;
+          obj.material = new THREE.MeshStandardMaterial({
+            vertexColors: false,
+            transparent: true,
+            opacity: oldMat.opacity !== undefined ? Math.max(oldMat.opacity, 0.85) : 0.85,
+            roughness: 0.55,
+            metalness: 0.02,
+            emissive: new THREE.Color(0x000000),
+            emissiveIntensity: 0,
+            side: THREE.DoubleSide
+          });
+        } else if (obj.name.startsWith('SK_') || (obj.material && obj.material.name && obj.material.name.includes('Skeleton'))) {
+          skeletonMesh = obj;
+          obj.userData.layer = 'skeleton';
+          const oldMat = obj.material;
+          obj.material = new THREE.MeshStandardMaterial({
+            color: oldMat.color || new THREE.Color(0xf0ead8),
+            transparent: true,
+            opacity: oldMat.opacity !== undefined ? Math.max(oldMat.opacity, 0.88) : 0.88,
+            roughness: 0.5,
+            metalness: 0.05,
+            emissive: new THREE.Color(0x000000),
+            emissiveIntensity: 0,
+            side: THREE.DoubleSide
+          });
+        } else {
+          // Generic mesh - use standard material
+          if (!obj.material.emissive) {
+            const old = obj.material;
+            obj.material = new THREE.MeshStandardMaterial({
+              color: old.color || new THREE.Color(0xffffff),
+              map: old.map || null,
+              transparent: old.transparent || false,
+              opacity: old.opacity !== undefined ? old.opacity : 1,
+              roughness: 0.6,
+              metalness: 0.05,
+              emissive: new THREE.Color(0x000000),
+              emissiveIntensity: 0
+            });
+          }
+        }
+      }
+    });
+
+    root.add(glbModel);
+    updateLayerVisibility();
+    applyPoseToGLB(currentPose);
+
+    // Initialize vertex coloring for muscles
+    initMuscleVertexColors();
+    applyMuscleColors();
+
+    hideStatus();
+    console.log('GLB loaded:', filename, '/ Bones:', Object.keys(glbBones).length);
+  },
+  (xhr) => {
+    if (xhr.total) showStatus('3Dモデル読み込み中... ' + Math.round(xhr.loaded / xhr.total * 100) + '%');
+  },
+  (err) => { hideStatus(); console.error('GLB load error:', err); }
+  );
+}
+
+// ── Init & render loop ──
+buildStepButtons();
+goToStep(0);
+
+// Load GLB model
+setTimeout(() => {
+  fetch('human_rigged.glb', { method: 'HEAD' })
+    .then(r => { if (r.ok) loadGLB('human_rigged.glb', 'human_rigged.glb'); })
+    .catch(() => { console.log('human_rigged.glb not found nearby'); });
+}, 300);
+
+function lerp(a, b, f) { return a + (b - a) * f; }
+
+(function loop() {
+  requestAnimationFrame(loop);
+
+  // Interpolate pose
+  for (let k in targetPose) {
+    if (typeof targetPose[k] === 'number') {
+      currentPose[k] = lerp(currentPose[k] || 0, targetPose[k], 0.08);
+    } else {
+      currentPose[k] = targetPose[k];
+    }
+  }
+  if (glbModel) applyPoseToGLB(currentPose);
+
+  t += 0.014;
+
+  // Pulse animation for selected muscle
+  if (selectedMuscle && muscleMesh && muscleVertexColors && musclePositions) {
+    const pulse = 0.7 + Math.sin(t * 3.5) * 0.3;
+    const selRegions = MUSCLE_REGIONS[selectedMuscle];
+    const selColor = MCOLS[selectedMuscle] || 0xff8844;
+    const sr = ((selColor >> 16) & 0xFF) / 255;
+    const sg = ((selColor >> 8) & 0xFF) / 255;
+    const sb = (selColor & 0xFF) / 255;
+
+    if (selRegions) {
+      const count = musclePositions.length;
+      for (let i = 0; i < count; i++) {
+        const vx = musclePositions[i].x;
+        const vy = musclePositions[i].y;
+        const vz = musclePositions[i].z;
+        const strength = getVertexMuscleStrength(vx, vy, vz, selRegions);
+        if (strength > 0) {
+          const intensity = pulse * (0.5 + strength * 0.5);
+          muscleVertexColors.setXYZ(i, sr * intensity, sg * intensity, sb * intensity);
+        }
+      }
+      muscleVertexColors.needsUpdate = true;
+    }
+  }
+
+  root.rotation.y = rotY + Math.sin(t * 0.35) * 0.005;
+  root.rotation.x = rotX;
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>
