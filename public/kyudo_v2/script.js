@@ -1,0 +1,578 @@
+const D = Math.PI/180;
+
+/*
+ * ══════════════════════════════════════════════════════════════════════
+ *  射法八節 ポーズデータ（科学的根拠に基づく筋肉・骨格情報）
+ *
+ *  参考文献：
+ *  - 弓道教本 第一巻〜第四巻（全日本弓道連盟）
+ *  - 西園(1987) 弓道立位姿勢の生体力学的研究
+ *  - Richardson et al. (1999) Therapeutic Exercise for Spinal Segmental Stabilization
+ *  - Hodges & Richardson (1996) 腹横筋の先行収縮
+ *  - Codman (1934) The Shoulder（肩甲上腕リズム）
+ *  - Gray's Anatomy 42nd Edition
+ *  - Netter's Atlas of Human Anatomy 7th Edition
+ *  - Kendall et al. (2005) Muscles: Testing and Function with Posture and Pain
+ *  - Neumann (2010) Kinesiology of the Musculoskeletal System
+ * ══════════════════════════════════════════════════════════════════════
+ */
+const poses = [
+  // ① 足踏み (Ashibumi)
+  { name:"足踏み",
+    prompt:"kyudo ashibumi, pose already defined, do not change pose, feet placement must remain exactly as rigged, perfect symmetry maintained, weight evenly distributed, spine vertical, bow vertical in left hand, respect original bone positions completely, use provided pose as absolute reference, prioritize pose over aesthetics, hands must match exact rig pose, no finger correction, face direction fixed, no gaze change",
+    negPrompt:"pose deviation, altered pose, dynamic pose, reinterpretation, bent incorrectly, twisted joints, extra limbs, incorrect hand pose, broken fingers, asymmetry, leaning, exaggerated motion, stylized pose",
+    desc:"基礎となる立ち方。外八文字（約60°）に踏み開くことで、骨盤を安定させ、重心を両足の間に均等に落とす。足幅は矢束（自分の矢の長さ）を基準とし、射の土台を構築する。大腿四頭筋と中殿筋が下肢を安定させ、脊柱起立筋が体幹の垂直軸を維持する。",
+    muscles:[
+      {n:"中殿筋",    c:"#e85020", r:"主", en:"Gluteus Medius",         fn:"骨盤の水平維持・股関節外転。片脚荷重時のTrendelenburg徴候を防止"},
+      {n:"大腿四頭筋",c:"#e06010", r:"主", en:"Quadriceps Femoris",     fn:"膝関節の安定伸展。微小な膝屈曲位での等尺性収縮により姿勢保持"},
+      {n:"脊柱起立筋",c:"#2080d0", r:"協", en:"Erector Spinae",         fn:"脊柱の垂直位維持。重力に抗した抗重力筋としての持続的活動"},
+      {n:"前脛骨筋",  c:"#20b080", r:"協", en:"Tibialis Anterior",      fn:"足関節の安定化。足底全体での均等荷重を制御"},
+    ],
+    btags:["外八文字60°","骨盤：水平","脊柱：垂直中立","体重：左右均等","足幅：矢束基準"],
+    ref:"弓道教本第一巻 / 西園(1987) 弓道立位姿勢の生体力学的研究",
+    a:{ torsoX:0, torsoZ:0, headX:0.02, headY:0,
+        lShX:0.06, lShY:0, lShZ:-1.35, lElX:0.08, lElY:0, lElZ:0,
+        rShX:0.06, rShY:0, rShZ:1.35, rElX:0.08, rElY:0, rElZ:0,
+        lScapX:0, lScapY:0, rScapX:0, rScapY:0,
+        lHipX:0, lHipZ:0.15, lFootY:22*D, lKnX:0.02,
+        rHipX:0, rHipZ:-0.15, rFootY:-22*D, rKnX:0.02 }
+  },
+  // ② 胴造り (Dozukuri)
+  { name:"胴造り",
+    prompt:"kyudo dozukuri, pose already defined, do not change pose, spine alignment must remain unchanged, pelvis neutral as rigged, shoulders level and fixed, head alignment fixed, no posture correction by AI, use provided pose as absolute reference, prioritize pose over aesthetics, hands must match exact rig pose, no finger correction, face direction fixed, no gaze change",
+    negPrompt:"pose deviation, altered pose, dynamic pose, reinterpretation, bent incorrectly, twisted joints, extra limbs, incorrect hand pose, broken fingers, asymmetry, leaning, exaggerated motion, stylized pose",
+    desc:"三重十文字（足底・腰・両肩の各線が平行かつ直角に交差する構造）を確立する。腹横筋の収縮により腹腔内圧（IAP）を高め、体幹深層筋（インナーユニット）を安定させる。多裂筋が腰椎の分節的安定性を提供し、上肢の自由な動きを支える垂直軸を形成する。",
+    muscles:[
+      {n:"腹横筋",    c:"#e85020", r:"主", en:"Transversus Abdominis",  fn:"腹腔内圧上昇による体幹安定化。呼吸相に先行して収縮し腰椎を保護"},
+      {n:"多裂筋",    c:"#4060e0", r:"主", en:"Multifidus",             fn:"腰椎の分節的安定性。各椎間関節の中立位を維持する深層安定筋"},
+      {n:"脊柱起立筋",c:"#2080d0", r:"協", en:"Erector Spinae",         fn:"体幹の直立位保持。表層の抗重力筋として脊柱全体を支持"},
+      {n:"腸腰筋",    c:"#20a060", r:"協", en:"Iliopsoas",              fn:"腰椎前彎の維持と骨盤前傾の制御。立位での骨盤中立位に寄与"},
+    ],
+    btags:["三重十文字","腰椎前彎の維持","腹腔内圧(IAP)上昇","骨盤中立位","垂直軸の確立"],
+    ref:"Richardson et al. (1999) / Hodges & Richardson (1996) / 弓道教本第一巻",
+    a:{ torsoX:0, torsoZ:0, headX:0.02, headY:0,
+        lShX:0.06, lShY:0, lShZ:-1.35, lElX:0.08, lElY:0, lElZ:0,
+        rShX:0.06, rShY:0, rShZ:1.35, rElX:0.08, rElY:0, rElZ:0,
+        lScapX:0, lScapY:0, rScapX:0, rScapY:0,
+        lHipX:0, lHipZ:0.15, lFootY:22*D, lKnX:0.02,
+        rHipX:0, rHipZ:-0.15, rFootY:-22*D, rKnX:0.02 }
+  },
+  // ③ 弓構え (Yugamae)
+  { name:"弓構え",
+    prompt:"kyudo yugamae, pose already defined, do not change pose, tenouchi grip must remain exactly as rigged, yugake hand position fixed, arrow position unchanged, no reinterpretation of hand pose, use provided pose as absolute reference, prioritize pose over aesthetics, hands must match exact rig pose, no finger correction, face direction fixed, no gaze change",
+    negPrompt:"pose deviation, altered pose, dynamic pose, reinterpretation, bent incorrectly, twisted joints, extra limbs, incorrect hand pose, broken fingers, asymmetry, leaning, exaggerated motion, stylized pose",
+    desc:"射の準備段階。物見（頸椎C1-C2の軸回旋により頭部を的方向へ向ける）を定め、手の内（天紋筋へのグリップ密着）を形成する。前鋸筋が肩甲骨を前方に保持（プロトラクション）し、僧帽筋下部が肩甲骨を下制して肩が上がることを防ぐ。回旋筋腱板が肩関節を動的に安定させる。",
+    muscles:[
+      {n:"前鋸筋",      c:"#e85020", r:"主", en:"Serratus Anterior",       fn:"肩甲骨の前方突出（プロトラクション）と上方回旋。翼状肩甲を防止"},
+      {n:"回旋筋腱板",  c:"#9060d0", r:"主", en:"Rotator Cuff",            fn:"肩関節の動的安定化。棘上筋・棘下筋・小円筋・肩甲下筋の4筋の協調収縮"},
+      {n:"橈側手根屈筋",c:"#2080d0", r:"主", en:"Flexor Carpi Radialis",   fn:"手の内形成時の手関節安定化。適度な屈曲位で弓を保持"},
+      {n:"僧帽筋下部",  c:"#20a060", r:"協", en:"Lower Trapezius",         fn:"肩甲骨の下制と内転。肩の挙上（すくみ）を防止する拮抗作用"},
+    ],
+    btags:["物見：頸椎C1-C2回旋","手の内：天紋筋への密着","肩：下制し安定させる","取懸け：指の脱力"],
+    ref:"Netter's Atlas 7th Ed.（肩甲上腕安定機構）/ 弓道教本第一巻",
+    a:{ torsoX:0, torsoZ:0, headX:0, headY:0.55,
+        lShX:0.85, lShY:0, lShZ:-0.75, lElX:1.10, lElY:0.20, lElZ:0.10,
+        rShX:0.85, rShY:0, rShZ:0.75, rElX:1.10, rElY:-0.20, rElZ:-0.10,
+        lScapX:0.05, lScapY:0, rScapX:0.05, rScapY:0,
+        lHipX:0, lHipZ:0.15, lFootY:22*D, lKnX:0.02,
+        rHipX:0, rHipZ:-0.15, rFootY:-22*D, rKnX:0.02 }
+  },
+  // ④ 打起し (Uchiokoshi)
+  { name:"打起し",
+    prompt:"kyudo uchiokoshi, pose already defined, do not change pose, arm elevation must match rig exactly, no symmetry correction by AI, shoulder height unchanged, spine must not lean, use provided pose as absolute reference, prioritize pose over aesthetics, hands must match exact rig pose, no finger correction, face direction fixed, no gaze change",
+    negPrompt:"pose deviation, altered pose, dynamic pose, reinterpretation, bent incorrectly, twisted joints, extra limbs, incorrect hand pose, broken fingers, asymmetry, leaning, exaggerated motion, stylized pose",
+    desc:"肩甲上腕リズム（2:1の法則）を利用して弓を正面に挙上する。三角筋前部が主動筋として肩関節を屈曲させ、前鋸筋が肩甲骨を上方回旋させることで、肩峰下インピンジメントを防ぐ。僧帽筋上部の過剰な関与を抑制し、肩がすくまないよう注意する。挙上角は約45°が基準。",
+    muscles:[
+      {n:"三角筋前部",c:"#e85020", r:"主", en:"Anterior Deltoid",    fn:"肩関節屈曲の主動筋。0-90°の挙上で最大の筋電図活動を示す"},
+      {n:"前鋸筋",    c:"#20a060", r:"主", en:"Serratus Anterior",   fn:"肩甲骨上方回旋。肩甲上腕リズムにおける肩甲骨側の運動を担当"},
+      {n:"棘上筋",    c:"#9060d0", r:"主", en:"Supraspinatus",       fn:"肩関節外転の初期段階（0-30°）で始動。上腕骨頭の下方への圧迫力を提供"},
+      {n:"僧帽筋中部",c:"#2080d0", r:"協", en:"Middle Trapezius",    fn:"肩甲骨の内転（安定化）。挙上時の肩甲骨を胸郭に固定"},
+    ],
+    btags:["挙上角：45°付近","肩甲上腕リズム(2:1)","肩を上げない","僧帽筋上部の抑制"],
+    ref:"Codman (1934) The Shoulder / Gray's Anatomy 42nd Ed. / 弓道教本第二巻",
+    a:{ torsoX:-0.02, torsoZ:0, headX:0, headY:0.50,
+        lShX:0, lShY:-0.45, lShZ:0.90, lElX:0.08, lElY:0, lElZ:0,
+        rShX:0, rShY:0.45, rShZ:-0.90, rElX:0.08, rElY:0, rElZ:0,
+        lScapX:0, lScapY:0.12, rScapX:0, rScapY:-0.12,
+        lHipX:0, lHipZ:0.15, lFootY:22*D, lKnX:0.02,
+        rHipX:0, rHipZ:-0.15, rFootY:-22*D, rKnX:0.02 }
+  },
+  // ⑤ 引分け (Hikiwake)
+  { name:"引分け",
+    prompt:"kyudo hikiwake, pose already defined, do not change pose, left push and right pull directions fixed, draw length unchanged, elbow positions fixed, no additional expansion or compression, use provided pose as absolute reference, prioritize pose over aesthetics, hands must match exact rig pose, no finger correction, face direction fixed, no gaze change",
+    negPrompt:"pose deviation, altered pose, dynamic pose, reinterpretation, bent incorrectly, twisted joints, extra limbs, incorrect hand pose, broken fingers, asymmetry, leaning, exaggerated motion, stylized pose",
+    desc:"弓を左右対称に押し開く段階。腕の力ではなく、広背筋と菱形筋を用いて肩甲骨を背骨方向に寄せる（リトラクション）。押手側は上腕三頭筋と前鋸筋で矢の延長線方向に伸ばし、引手側は肘を肩の高さで後方に引く。大三から口割りへの移行を「左右均等に胸の中筋から割り込む」ように行う。",
+    muscles:[
+      {n:"広背筋",    c:"#e85020", r:"主", en:"Latissimus Dorsi",    fn:"肩関節の伸展・内転・内旋。引手側での弓を引く主要な力源"},
+      {n:"菱形筋",    c:"#9060d0", r:"主", en:"Rhomboids",           fn:"肩甲骨内転（リトラクション）。肩甲骨を背骨に向けて寄せ、胸を開く"},
+      {n:"上腕三頭筋",c:"#2080d0", r:"主", en:"Triceps Brachii",     fn:"押手側の肘関節伸展。弓を的方向へ押し続ける力を発揮"},
+      {n:"三角筋後部",c:"#20a060", r:"協", en:"Posterior Deltoid",    fn:"肩関節の水平外転。引手側で肘を後方へ引く補助"},
+    ],
+    btags:["大三から口割りへ","肩甲骨の内転","左右均等の力","肘での引き"],
+    ref:"Netter's Atlas 7th Ed.（肩関節筋群）/ 弓道教本第二巻 / Neumann (2010)",
+    a:{ torsoX:0, torsoZ:0.02, headX:0, headY:0.60,
+        lShX:0.10, lShY:0, lShZ:-0.06, lElX:0.05, lElY:0, lElZ:0.03,
+        rShX:-0.38, rShY:0, rShZ:0.08, rElX:1.55, rElY:0, rElZ:0.18,
+        lScapX:0.02, lScapY:0.06, rScapX:0.14, rScapY:0.06,
+        lHipX:0, lHipZ:0.15, lFootY:22*D, lKnX:0.02,
+        rHipX:0, rHipZ:-0.15, rFootY:-22*D, rKnX:0.02 }
+  },
+  // ⑥ 会 (Kai)
+  { name:"会",
+    prompt:"kyudo kai, pose already defined, do not change pose, full draw position must match rig exactly, hand anchor position fixed, arrow alignment unchanged, no micro-adjustments, use provided pose as absolute reference, prioritize pose over aesthetics, hands must match exact rig pose, no finger correction, face direction fixed, no gaze change",
+    negPrompt:"pose deviation, altered pose, dynamic pose, reinterpretation, bent incorrectly, twisted joints, extra limbs, incorrect hand pose, broken fingers, asymmetry, leaning, exaggerated motion, stylized pose",
+    desc:"引分けの完成形であり、物理的な静止ではなく「無限の膨張（伸び合い・詰め合い）」の状態。広背筋と菱形筋の等尺性収縮が最大となり、胸郭を左右に押し広げることで弾性エネルギーを蓄積する。回旋筋腱板が肩関節を動的に安定させ、棘下筋が上腕の外旋位を保持する。縦横十文字が完成する。",
+    muscles:[
+      {n:"広背筋",    c:"#e85020", r:"主", en:"Latissimus Dorsi",    fn:"等尺性収縮による持続的な引き力の維持。エネルギー蓄積の主要筋"},
+      {n:"菱形筋",    c:"#9060d0", r:"主", en:"Rhomboids",           fn:"肩甲骨内転位の維持。「詰め合い」における両肩甲骨の接近を保持"},
+      {n:"回旋筋腱板",c:"#4060e0", r:"主", en:"Rotator Cuff",        fn:"会における肩関節の動的安定化。強い外力下での関節求心力の維持"},
+      {n:"棘下筋",    c:"#e0a020", r:"主", en:"Infraspinatus",       fn:"上腕骨の外旋位保持。正しい矢筋を維持するための肩関節回旋制御"},
+    ],
+    btags:["縦横十文字","伸び合いと詰め合い","胸弦の接触","気力の充実"],
+    ref:"Gray's Anatomy 42nd Ed. / 弓道教本第二巻 / Kendall et al. (2005)",
+    a:{ torsoX:0, torsoZ:0.02, headX:0, headY:0.60,
+        lShX:0.06, lShY:0, lShZ:-0.04, lElX:0.03, lElY:0, lElZ:0.01,
+        rShX:-0.50, rShY:0, rShZ:0.06, rElX:1.80, rElY:0, rElZ:0.22,
+        lScapX:0.02, lScapY:0.04, rScapX:0.20, rScapY:0.08,
+        lHipX:0, lHipZ:0.15, lFootY:22*D, lKnX:0.02,
+        rHipX:0, rHipZ:-0.15, rFootY:-22*D, rKnX:0.02 }
+  },
+  // ⑦ 離れ (Hanare)
+  { name:"離れ",
+    prompt:"kyudo hanare, pose already defined, do not change pose, release position must match rig exactly, no added motion blur or dynamics, hand trajectories fixed, use provided pose as absolute reference, prioritize pose over aesthetics, hands must match exact rig pose, no finger correction, face direction fixed, no gaze change",
+    negPrompt:"pose deviation, altered pose, dynamic pose, reinterpretation, bent incorrectly, twisted joints, extra limbs, incorrect hand pose, broken fingers, asymmetry, leaning, exaggerated motion, stylized pose",
+    desc:"蓄積されたエネルギーの瞬間的な解放。作為的な指の動きではなく、「伸び合い」の延長として背筋の収縮による胸郭の広がりが臨界点に達した瞬間に、弦が自然に「はじける」現象。前鋸筋が押手を前方に送り出し、三角筋後部が引手を後方に展開する。",
+    muscles:[
+      {n:"広背筋",    c:"#e85020", r:"主", en:"Latissimus Dorsi",    fn:"離れの瞬間の爆発的収縮。蓄積エネルギーの解放による弦の放出"},
+      {n:"前鋸筋",    c:"#9060d0", r:"主", en:"Serratus Anterior",   fn:"押手側の肩甲骨前方突出。離れの瞬間に弓を的方向へ送り出す"},
+      {n:"三角筋後部",c:"#20a060", r:"主", en:"Posterior Deltoid",    fn:"引手側の肩関節水平外転。弦の解放後に右腕を後方へ展開"},
+      {n:"大胸筋",    c:"#2080d0", r:"協", en:"Pectoralis Major",    fn:"胸郭の弾性復元への協働。離れの瞬間の上体安定化"},
+    ],
+    btags:["自然の離れ","弓返り","弾性の解放","両拳の鋭い離れ"],
+    ref:"弓道教本第二巻 / Netter's Atlas 7th Ed. / Neumann (2010)",
+    a:{ torsoX:0, torsoZ:0.01, headX:0, headY:0.60,
+        lShX:0.05, lShY:0, lShZ:0.20, lElX:-0.08, lElY:0, lElZ:0.04,
+        rShX:-0.15, rShY:0, rShZ:0.15, rElX:0.25, rElY:0, rElZ:0.05,
+        lScapX:0, lScapY:0.04, rScapX:0.08, rScapY:0,
+        lHipX:0, lHipZ:0.15, lFootY:22*D, lKnX:0.02,
+        rHipX:0, rHipZ:-0.15, rFootY:-22*D, rKnX:0.02 }
+  },
+  // ⑧ 残心 (Zanshin)
+  { name:"残心（残身）",
+    prompt:"kyudo zanshin, pose already defined, do not change pose, final posture must remain unchanged, balance and alignment fixed, no relaxation added, use provided pose as absolute reference, prioritize pose over aesthetics, hands must match exact rig pose, no finger correction, face direction fixed, no gaze change",
+    negPrompt:"pose deviation, altered pose, dynamic pose, reinterpretation, bent incorrectly, twisted joints, extra limbs, incorrect hand pose, broken fingers, asymmetry, leaning, exaggerated motion, stylized pose",
+    desc:"射の完成形。離れによって生じた余韻を保ちつつ、全身の緊張を維持する段階。三角筋後部と僧帽筋中部が両腕の開いた姿勢を等尺性収縮で保持し、脊柱起立筋が体幹の垂直軸を堅持する。中殿筋が骨盤の安定性を維持し、心身一如の状態で的方向を見届ける。",
+    muscles:[
+      {n:"三角筋後部",c:"#20a060", r:"主", en:"Posterior Deltoid",    fn:"両腕展開位の等尺性保持。離れ後の姿勢を崩さない静的筋力"},
+      {n:"脊柱起立筋",c:"#2080d0", r:"主", en:"Erector Spinae",      fn:"体幹垂直軸の堅持。離れの衝撃後も姿勢を維持する抗重力活動"},
+      {n:"僧帽筋中部",c:"#9060d0", r:"主", en:"Middle Trapezius",    fn:"肩甲骨内転位の維持。残心における「張り」の体現"},
+      {n:"中殿筋",    c:"#e85020", r:"協", en:"Gluteus Medius",      fn:"骨盤水平位の維持。下肢の安定した土台を最後まで保持"},
+    ],
+    btags:["姿勢の堅持","気合の継続","心身一如","矢所の注視"],
+    ref:"弓道教本第一巻・第二巻 / Gray's Anatomy 42nd Ed. / Kendall et al. (2005)",
+    a:{ torsoX:0, torsoZ:0, headX:0, headY:0.60,
+        lShX:0.04, lShY:0, lShZ:0.18, lElX:-0.05, lElY:0, lElZ:0.03,
+        rShX:-0.10, rShY:0, rShZ:0.12, rElX:0.18, rElY:0, rElZ:0.03,
+        lScapX:0, lScapY:0.04, rScapX:0.06, rScapY:0,
+        lHipX:0, lHipZ:0.15, lFootY:22*D, lKnX:0.02,
+        rHipX:0, rHipZ:-0.15, rFootY:-22*D, rKnX:0.02 }
+  }
+];
+
+// ══ THREE.js セットアップ ══════════════════════════════════════════════
+const canvas = document.getElementById('c3');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.shadowMap.enabled = true;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x13202e);
+scene.fog = new THREE.Fog(0x13202e, 9, 20);
+
+const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 50);
+camera.position.set(0, 0.95, 3.3);
+camera.lookAt(0, 0.85, 0);
+
+// ライト
+scene.add(new THREE.AmbientLight(0x8899cc, 0.7));
+const key = new THREE.DirectionalLight(0xfff5e8, 1.2);
+key.position.set(3, 5, 4); key.castShadow = true; scene.add(key);
+const fill = new THREE.DirectionalLight(0x4466aa, 0.45); fill.position.set(-3, 2, -2); scene.add(fill);
+const rim  = new THREE.DirectionalLight(0x6688ff, 0.22); rim.position.set(0, 2, -4);  scene.add(rim);
+
+// 床
+const floor = new THREE.Mesh(new THREE.CircleGeometry(1.8, 48), new THREE.MeshLambertMaterial({color:0x1a2d40}));
+floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+scene.add(new THREE.GridHelper(3.6, 18, 0x2a4060, 0x1e3050));
+
+// リサイズ
+function resize(){
+  const w = canvas.clientWidth, h = canvas.clientHeight || 520;
+  renderer.setSize(w, h, false);
+  camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(canvas); setTimeout(resize, 30);
+
+// マウス・タッチ操作
+let rY=0.25, rX=0.04, drag=false, px=0, py=0;
+canvas.addEventListener('mousedown', e=>{drag=true; px=e.clientX; py=e.clientY});
+canvas.addEventListener('touchstart', e=>{drag=true; px=e.touches[0].clientX; py=e.touches[0].clientY}, {passive:true});
+window.addEventListener('mouseup', ()=>drag=false);
+window.addEventListener('touchend', ()=>drag=false);
+window.addEventListener('mousemove', e=>{
+  if(!drag) return;
+  rY += (e.clientX-px)*0.012; rX += (e.clientY-py)*0.005;
+  rX = Math.max(-0.55, Math.min(0.75, rX));
+  px = e.clientX; py = e.clientY;
+});
+window.addEventListener('touchmove', e=>{
+  if(!drag) return; rY += (e.touches[0].clientX-px)*0.012; px=e.touches[0].clientX;
+}, {passive:true});
+canvas.addEventListener('wheel', e=>{
+  camera.position.z = Math.max(1.8, Math.min(6, camera.position.z+e.deltaY*0.005));
+}, {passive:true});
+
+// ══ 筋肉マッピング定義 ══════════════════════════════════════════════
+const MUSCLE_DEFS = {
+  "中殿筋":       { col: 0xe85020, keys: ["gluteus","medius","中殿筋","glut_med"] },
+  "大腿四頭筋":   { col: 0xe06010, keys: ["quadriceps","rectus","femoris","大腿四頭筋","quad","vastus"] },
+  "脊柱起立筋":   { col: 0x2080d0, keys: ["erector","spinae","脊柱起立筋","iliocostalis","longissimus"] },
+  "前脛骨筋":     { col: 0x20b080, keys: ["tibialis","anterior","前脛骨筋"] },
+  "腹横筋":       { col: 0xe85020, keys: ["transversus","abdominis","腹横筋","transverse"] },
+  "多裂筋":       { col: 0x4060e0, keys: ["multifidus","多裂筋"] },
+  "腸腰筋":       { col: 0x20a060, keys: ["psoas","iliacus","腸腰筋","iliopsoas"] },
+  "前鋸筋":       { col: 0xe85020, keys: ["serratus","前鋸筋"] },
+  "回旋筋腱板":   { col: 0x9060d0, keys: ["rotator","cuff","supraspinatus","infraspinatus","teres","subscapularis"] },
+  "橈側手根屈筋": { col: 0x2080d0, keys: ["flexor","carpi","radialis","橈側手根屈筋"] },
+  "僧帽筋下部":   { col: 0x20a060, keys: ["trapezius","lower","僧帽筋下部","trap_low"] },
+  "三角筋前部":   { col: 0xe85020, keys: ["deltoid","anterior","三角筋前部","delt_ant"] },
+  "棘上筋":       { col: 0x9060d0, keys: ["supraspinatus","棘上筋"] },
+  "僧帽筋中部":   { col: 0x2080d0, keys: ["trapezius","middle","僧帽筋中部","trap_mid"] },
+  "広背筋":       { col: 0xe85020, keys: ["latissimus","dorsi","広背筋","lat"] },
+  "菱形筋":       { col: 0x9060d0, keys: ["rhomboid","菱形筋"] },
+  "上腕三頭筋":   { col: 0x2080d0, keys: ["triceps","brachii","上腕三頭筋"] },
+  "三角筋後部":   { col: 0x20a060, keys: ["deltoid","posterior","三角筋後部","delt_post"] },
+  "大胸筋":       { col: 0x2080d0, keys: ["pectoralis","major","大胸筋","pec"] },
+  "棘下筋":       { col: 0xe0a020, keys: ["infraspinatus","棘下筋"] },
+};
+
+// ══ シーングラフ ═════════════════════════════════════════════════════
+const root = new THREE.Group(); scene.add(root);
+let currentPose = {};
+let targetPose = {};
+
+// ══ UI更新 ═══════════════════════════════════════════════════════════
+function updateUI(step){
+  const p = poses[step];
+  document.getElementById('pname').textContent = p.name;
+  document.getElementById('pdesc').textContent = p.desc;
+  document.getElementById('chips').innerHTML = p.muscles.map(m =>
+    `<div class="chip" id="chip-${m.n}" onclick="selectMuscle('${m.n}')" title="${m.en}: ${m.fn}">` +
+    `<div class="cdot" style="background:${m.c}"></div>${m.n}<span class="rl">${m.r}働</span></div>`
+  ).join('');
+  document.getElementById('blist').innerHTML = p.btags.map((t,i) =>
+    `<div class="btag" id="btag-${i}" onclick="selectBtag(${i},'${t.replace(/'/g,"\\'")}')">📌 ${t}</div>`
+  ).join('');
+  document.getElementById('ref').textContent = '参考：' + p.ref;
+  document.getElementById('muscle-detail').classList.remove('on');
+}
+
+// ══ 筋肉フォーカス制御 ═════════════════════════════════════════════
+let selectedMuscle = null;
+let selectedBtag = null;
+const origMaterials = new Map();
+
+function saveMeshOriginal(mesh){
+  if(origMaterials.has(mesh)) return;
+  const mat = mesh.material;
+  if(!mat) return;
+  origMaterials.set(mesh, {
+    color: mat.color ? mat.color.clone() : null,
+    opacity: mat.opacity !== undefined ? mat.opacity : 1,
+    transparent: mat.transparent || false,
+    emissive: mat.emissive ? mat.emissive.clone() : null,
+    emissiveIntensity: mat.emissiveIntensity || 0
+  });
+}
+
+function selectMuscle(name){
+  const detailEl = document.getElementById('muscle-detail');
+  if(selectedMuscle === name){
+    selectedMuscle = null;
+    applyGLBHighlight(null, 'muscle');
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('sel'));
+    document.getElementById('hint-sel').classList.remove('on');
+    detailEl.classList.remove('on');
+    return;
+  }
+  selectedMuscle = name;
+  selectedBtag = null;
+  document.querySelectorAll('.btag').forEach(b => b.classList.remove('sel'));
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('sel'));
+  const el = document.getElementById('chip-' + name);
+  if(el) el.classList.add('sel');
+  document.getElementById('hint-sel').classList.add('on');
+  applyGLBHighlight(name, 'muscle');
+
+  // 筋肉詳細表示
+  const p = poses[currentStep];
+  const m = p.muscles.find(x => x.n === name);
+  if(m){
+    document.getElementById('muscle-en').textContent = m.en;
+    document.getElementById('muscle-func').textContent = m.fn;
+    detailEl.classList.add('on');
+  } else {
+    detailEl.classList.remove('on');
+  }
+}
+
+function isMuscleMatch(meshName, targetMuscleName) {
+  const def = MUSCLE_DEFS[targetMuscleName];
+  if (!def) return meshName.toLowerCase().includes(targetMuscleName.toLowerCase());
+  const n = meshName.toLowerCase();
+  return def.keys.some(k => n.includes(k.toLowerCase()));
+}
+
+function selectBtag(idx, txt) {
+  if (selectedBtag === idx) {
+    selectedBtag = null;
+    document.querySelectorAll('.btag').forEach(b => b.classList.remove('sel'));
+    document.getElementById('hint-sel').classList.remove('on');
+    applyGLBHighlight(null, 'bone');
+    return;
+  }
+  selectedBtag = idx;
+  selectedMuscle = null;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('sel'));
+  applyGLBHighlight(null, 'muscle');
+  document.querySelectorAll('.btag').forEach(b => b.classList.remove('sel'));
+  document.getElementById('btag-' + idx).classList.add('sel');
+  document.getElementById('hint-sel').classList.add('on');
+  document.getElementById('muscle-detail').classList.remove('on');
+  applyGLBHighlight('__bone_flash__', 'bone');
+  setTimeout(() => applyGLBHighlight(null, 'bone'), 1000);
+}
+
+function applyGLBHighlight(targetName, mode){
+  if(!glbModel) return;
+  glbModel.traverse(obj => {
+    if(!obj.isMesh || !obj.material) return;
+    saveMeshOriginal(obj);
+    const layer = obj.userData.layer || '';
+    if(mode === 'muscle'){
+      if(!targetName){ restoreMesh(obj, origMaterials.get(obj)); }
+      else {
+        const isMatch = isMuscleMatch(obj.name, targetName);
+        if(isMatch){
+          const color = MUSCLE_DEFS[targetName]?.col || 0xff8844;
+          if(obj.material.color) obj.material.color.setHex(color);
+          obj.material.transparent = true; obj.material.opacity = 1.0;
+          if(obj.material.emissive){ obj.material.emissive.setHex(color); obj.material.emissiveIntensity = 1.5; }
+        } else if(layer === 'muscle'){
+          if(obj.material.color) obj.material.color.setRGB(0.1, 0.1, 0.1);
+          obj.material.transparent = true; obj.material.opacity = 0.05;
+          if(obj.material.emissive) obj.material.emissive.set(0x000000);
+          obj.material.emissiveIntensity = 0;
+        }
+        obj.material.needsUpdate = true;
+      }
+    } else if(mode === 'bone'){
+      if(targetName === '__bone_flash__' && (layer === 'skeleton' || layer === '')){
+        if(obj.material.emissive) obj.material.emissive.setHex(0xc8933a);
+        obj.material.emissiveIntensity = 0.7; obj.material.needsUpdate = true;
+      } else { restoreMesh(obj, origMaterials.get(obj)); }
+    }
+  });
+}
+
+function restoreMesh(obj, orig){
+  if(!orig || !obj.material) return;
+  if(orig.color && obj.material.color) obj.material.color.copy(orig.color);
+  obj.material.opacity = orig.opacity;
+  obj.material.transparent = orig.transparent;
+  if(orig.emissive && obj.material.emissive) obj.material.emissive.copy(orig.emissive);
+  obj.material.emissiveIntensity = orig.emissiveIntensity;
+  obj.material.needsUpdate = true;
+}
+
+// ══ レイヤー切替・ステップ制御 ═══════════════════════════════════════
+let currentStep = 0;
+const show = {sk:true, mu:true, jo:true};
+
+function go(i){
+  currentStep = i;
+  selectedMuscle = null; selectedBtag = null;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('sel'));
+  document.querySelectorAll('.btag').forEach(b => b.classList.remove('sel'));
+  const hintEl = document.getElementById('hint-sel');
+  if(hintEl) hintEl.classList.remove('on');
+  document.getElementById('muscle-detail').classList.remove('on');
+  document.querySelectorAll('.sbtn').forEach((b,j) => b.classList.toggle('on', j===i));
+  targetPose = JSON.parse(JSON.stringify(poses[i].a));
+  if (Object.keys(currentPose).length === 0) currentPose = JSON.parse(JSON.stringify(targetPose));
+  updateUI(i);
+  origMaterials.clear();
+}
+
+function tl(k){
+  show[k] = !show[k];
+  document.getElementById('lb-'+k).classList.toggle('on', show[k]);
+  updateGLBLayers();
+}
+
+// ══ 自動再生 ═════════════════════════════════════════════════════════
+let autoplayInterval = null;
+function toggleAutoplay(){
+  const btn = document.getElementById('lb-auto');
+  if(autoplayInterval){
+    clearInterval(autoplayInterval);
+    autoplayInterval = null;
+    btn.textContent = '▶ 自動再生';
+    btn.classList.remove('on');
+  } else {
+    btn.textContent = '⏸ 停止';
+    btn.classList.add('on');
+    autoplayInterval = setInterval(() => {
+      go((currentStep + 1) % poses.length);
+    }, 3000);
+  }
+}
+
+// ══ GLBモデル管理 ════════════════════════════════════════════════════
+let glbModel = null;
+const glbBones = {};
+const STATUS = document.getElementById('glb-status');
+function showStatus(msg){ STATUS.style.display='block'; STATUS.textContent=msg; }
+function hideStatus(){ STATUS.style.display='none'; }
+
+// ボーン名: mixamorigHips 形式（コロンなし・キャメルケース）
+const BONE_MAP = {
+  'mixamorigHips':         (m,a) => { m.rotation.set(a.torsoX||0, 0, a.torsoZ||0); },
+  'mixamorigSpine':        (m,a) => { m.rotation.x = (a.torsoX||0)*0.3; },
+  'mixamorigSpine1':       (m,a) => { m.rotation.x = (a.torsoX||0)*0.3; },
+  'mixamorigSpine2':       (m,a) => { m.rotation.x = (a.torsoX||0)*0.2; },
+  'mixamorigNeck':         (m,a) => { m.rotation.set((a.headX||0)*0.4,(a.headY||0)*0.4,0); },
+  'mixamorigHead':         (m,a) => { m.rotation.set((a.headX||0)*0.6,(a.headY||0)*0.6,0); },
+  'mixamorigLeftShoulder': (m,a) => { m.rotation.set(a.lScapX||0, a.lScapY||0, 0); },
+  'mixamorigRightShoulder':(m,a) => { m.rotation.set(a.rScapX||0, a.rScapY||0, 0); },
+  'mixamorigLeftArm':      (m,a) => { m.rotation.set(a.lShX||0, a.lShY||0, a.lShZ||0); },
+  'mixamorigLeftForeArm':  (m,a) => { m.rotation.set(a.lElX||0, a.lElY||0, a.lElZ||0); },
+  'mixamorigRightArm':     (m,a) => { m.rotation.set(a.rShX||0, a.rShY||0, a.rShZ||0); },
+  'mixamorigRightForeArm': (m,a) => { m.rotation.set(a.rElX||0, a.rElY||0, a.rElZ||0); },
+  'mixamorigLeftUpLeg':    (m,a) => { m.rotation.set(a.lHipX||0, a.lFootY||0, a.lHipZ||0); },
+  'mixamorigLeftLeg':      (m,a) => { m.rotation.x = a.lKnX||0; },
+  'mixamorigRightUpLeg':   (m,a) => { m.rotation.set(a.rHipX||0, a.rFootY||0, a.rHipZ||0); },
+  'mixamorigRightLeg':     (m,a) => { m.rotation.x = a.rKnX||0; },
+};
+
+function applyPoseToGLB(a){
+  for(const [boneName, fn] of Object.entries(BONE_MAP)){
+    if(glbBones[boneName]) fn(glbBones[boneName], a);
+  }
+}
+
+function updateGLBLayers(){
+  if(!glbModel) return;
+  glbModel.traverse(obj => {
+    if(obj.isMesh){
+      const layer = obj.userData && obj.userData.layer;
+      if(layer==='skeleton') obj.visible = show.sk;
+      else if(layer==='muscle') obj.visible = show.mu;
+      else obj.visible = true;
+    }
+  });
+}
+
+function loadGLB(url){
+  showStatus('GLBを読み込み中...');
+  const loader = new THREE.GLTFLoader();
+  loader.load(url, (gltf) => {
+    if(glbModel){ root.remove(glbModel); glbModel=null; }
+    Object.keys(glbBones).forEach(k => delete glbBones[k]);
+    glbModel = gltf.scene;
+
+    // スケール & 位置
+    const b0 = new THREE.Box3().setFromObject(glbModel);
+    const scale = 1.70 / b0.getSize(new THREE.Vector3()).y;
+    glbModel.scale.setScalar(scale);
+    glbModel.updateMatrixWorld(true);
+    const b1 = new THREE.Box3().setFromObject(glbModel);
+    const c1 = b1.getCenter(new THREE.Vector3());
+    glbModel.position.set(-c1.x, -b1.min.y, -c1.z);
+
+    // ボーン収集（スケルトンから取得 — standalone Boneノードはなし）
+    Object.keys(glbBones).forEach(k => delete glbBones[k]);
+    // まず traverse で isBone のものを収集
+    gltf.scene.traverse(obj => {
+      if((obj.isBone || obj.type==='Bone') && BONE_MAP[obj.name]) glbBones[obj.name] = obj;
+    });
+    // SkinnedMesh のスケルトンからも収集（こちらが確実）
+    gltf.scene.traverse(obj => {
+      if(obj.isSkinnedMesh && obj.skeleton){
+        obj.skeleton.bones.forEach(b => { if(BONE_MAP[b.name] && !glbBones[b.name]) glbBones[b.name] = b; });
+      }
+    });
+    console.log('ボーン収集:', Object.keys(glbBones).length, '/', Object.keys(BONE_MAP).length, Object.keys(glbBones));
+
+    // マテリアル処理
+    glbModel.traverse(obj => {
+      if(!obj.isMesh) return;
+      if(!obj.userData.layer){
+        if(obj.name.startsWith('SK_')) obj.userData.layer='skeleton';
+        else if(obj.name.startsWith('MU_')) obj.userData.layer='muscle';
+      }
+      obj.castShadow=true; obj.receiveShadow=true;
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mats.forEach(mat => {
+        if(!mat) return;
+        if(!mat.emissive){ mat.emissive=new THREE.Color(0); mat.emissiveIntensity=0; }
+      });
+    });
+
+    root.add(glbModel);
+    origMaterials.clear();
+    updateGLBLayers();
+    applyPoseToGLB(currentPose);
+    hideStatus();
+  },
+  xhr => { if(xhr.total) showStatus('読み込み中... '+Math.round(xhr.loaded/xhr.total*100)+'%'); },
+  err => { hideStatus(); console.error('GLBエラー:', err); }
+  );
+}
+
+// 同フォルダの human_rigged.glb を自動読み込み
+setTimeout(() => {
+  fetch('../human_rigged.glb', {method:'HEAD'})
+    .then(r => { if(r.ok) loadGLB('../human_rigged.glb'); })
+    .catch(() => {});
+}, 600);
+
+// ══ 初期化 & レンダリングループ ══════════════════════════════════════
+go(0);
+
+let t = 0;
+function lerp(a, b, f){ return a + (b - a) * f; }
+
+(function loop(){
+  requestAnimationFrame(loop);
+  for(let k in targetPose){
+    if(typeof targetPose[k] === 'number'){
+      currentPose[k] = lerp(currentPose[k]||0, targetPose[k], 0.08);
+    } else { currentPose[k] = targetPose[k]; }
+  }
+  if(glbModel) applyPoseToGLB(currentPose);
+
+  t += 0.014;
+  if(selectedMuscle && glbModel){
+    const pulse = 0.4 + Math.sin(t * 3.5) * 0.15;
+    glbModel.traverse(obj => {
+      if(obj.isMesh && obj.material && obj.material.emissiveIntensity > 0.5){
+        obj.material.emissiveIntensity = pulse;
+      }
+    });
+  }
+
+  root.rotation.y = rY + Math.sin(t*0.35)*0.005;
+  root.rotation.x = rX;
+  renderer.render(scene, camera);
+})();
