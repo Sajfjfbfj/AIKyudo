@@ -414,3 +414,221 @@ body {
   /* allow canvas to grow taller when eval is hidden */
   .pose-canvas { max-height: calc(100vh - 120px); }
 }
+
+/* ══════════════════════════════════════════
+   ヘッダーナビ
+══════════════════════════════════════════ */
+.header-nav {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+}
+.nav-tab {
+  font-family: var(--font-jp);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  padding: 7px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-muted);
+  transition: background 0.2s, color 0.2s;
+}
+.nav-tab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+.nav-tab.active {
+  background: rgba(200, 147, 58, 0.15);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ══════════════════════════════════════════
+   射法八節ページ
+══════════════════════════════════════════ */
+.hassetsu-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 72px);
+}
+
+.hassetsu-viewer {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.model-viewer-container {
+  width: 100%;
+  height: 100%;
+}
+
+.model-viewer-container canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ステージインジケーター */
+.stage-indicator {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  font-family: var(--font-mono);
+  color: rgba(255, 255, 255, 0.5);
+  z-index: 5;
+  pointer-events: none;
+}
+.stage-number {
+  font-size: 28px;
+  font-weight: 500;
+  color: var(--accent);
+}
+.stage-divider {
+  font-size: 18px;
+}
+.stage-total {
+  font-size: 16px;
+}
+
+/* 操作ヒント */
+.viewer-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ══════════════════════════════════════════
+   情報パネル
+══════════════════════════════════════════ */
+.hassetsu-info {
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  padding: 20px 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ナビゲーション */
+.stage-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.nav-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.nav-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent);
+}
+
+.stage-title-block {
+  flex: 1;
+  text-align: center;
+}
+.stage-name-ja {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.15em;
+}
+.stage-name-en {
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+
+/* 説明文 */
+.stage-description {
+  max-width: 700px;
+  margin: 0 auto;
+}
+.stage-description p {
+  font-size: 13px;
+  line-height: 1.9;
+  color: var(--text);
+  letter-spacing: 0.04em;
+  text-align: justify;
+}
+
+/* ステージ選択ドット */
+.stage-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.stage-dot {
+  position: relative;
+  width: auto;
+  padding: 5px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.stage-dot:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.stage-dot.active {
+  background: rgba(200, 147, 58, 0.15);
+  border-color: var(--accent);
+}
+.dot-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.stage-dot.active .dot-label {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ══════════════════════════════════════════
+   射法八節ページ レスポンシブ
+══════════════════════════════════════════ */
+@media (max-width: 600px) {
+  .hassetsu-info { padding: 14px 16px 18px; }
+  .stage-name-ja { font-size: 18px; }
+  .stage-description p { font-size: 12px; }
+  .stage-dots { gap: 4px; }
+  .stage-dot { padding: 4px 7px; }
+  .dot-label { font-size: 10px; }
+  .header-nav { gap: 2px; padding: 2px; }
+  .nav-tab { padding: 6px 10px; font-size: 11px; }
+}
