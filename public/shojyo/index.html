@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A3横　賞状作成アプリ </title>
+    <!-- PWA（アプリ化）用設定 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon.png">
+    <!-- 明朝体フォントの読み込み -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Shippori+Mincho:wght@500;700&family=Noto+Serif+JP:wght@500;700&family=Zen+Old+Mincho:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="apple-touch-icon" sizes="57x57" HREF="/apple-icon-57x57.png">
+<link rel="apple-touch-icon" sizes="60x60" HREF="/apple-icon-60x60.png">
+<link rel="apple-touch-icon" sizes="72x72" HREF="/apple-icon-72x72.png">
+<link rel="apple-touch-icon" sizes="76x76" HREF="/apple-icon-76x76.png">
+<link rel="apple-touch-icon" sizes="114x114" HREF="/apple-icon-114x114.png">
+<link rel="apple-touch-icon" sizes="120x120" HREF="/apple-icon-120x120.png">
+<link rel="apple-touch-icon" sizes="144x144" HREF="/apple-icon-144x144.png">
+<link rel="apple-touch-icon" sizes="152x152" HREF="/apple-icon-152x152.png">
+<link rel="apple-touch-icon" sizes="180x180" HREF="/apple-icon-180x180.png">
+<link rel="icon" type="image/png" sizes="192x192"  HREF="/android-icon-192x192.png">
+<link rel="icon" type="image/png" sizes="32x32" HREF="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="96x96" HREF="/favicon-96x96.png">
+<link rel="icon" type="image/png" sizes="16x16" HREF="/favicon-16x16.png">
+<link rel="manifest" HREF="/manifest.json">
+<meta name="msapplication-TileColor" content="#ffffff">
+<meta name="msapplication-TileImage" content="/ms-icon-144x144.png">
+<meta name="theme-color" content="#ffffff">
+    <link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+
+    <!-- モバイル用パネル開閉ボタン -->
+    <button class="panel-toggle-btn" id="panelToggleBtn" onclick="togglePanel()">
+        <span class="btn-icon">✏️</span>
+        <span id="panelBtnLabel">入力パネルを開く</span>
+    </button>
+
+    <!-- 操作パネル -->
+    <div class="controls" id="controlsPanel">
+        <h2>賞状作成</h2>
+
+        <!-- 個人戦 / 団体戦 -->
+        <div class="mode-select">
+            <label>
+                <input type="radio" name="mode" value="single" checked onchange="toggleMode()">
+                <span>個人戦</span>
+            </label>
+            <label>
+                <input type="radio" name="mode" value="team" onchange="toggleMode()">
+                <span>団体戦</span>
+            </label>
+        </div>
+
+        <!-- 個人戦サブモード（個人戦のみ表示） -->
+        <div id="singleSubMode">
+            <div class="sub-mode-select">
+                <label>
+                    <input type="radio" name="subMode" value="normal" checked onchange="toggleSubMode()">
+                    <span>通常</span>
+                </label>
+                <label>
+                    <input type="radio" name="subMode" value="nakano" onchange="toggleSubMode()">
+                    <span>🏹 中野杯</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>部門</label>
+            <input type="text" id="inputDepartment" placeholder="例：男子の部">
+        </div>
+        <div class="input-group">
+            <label>順位</label>
+            <input type="text" id="inputRank" value="優勝">
+        </div>
+        <div class="input-group">
+            <div class="input-group team-only" style="display:none;">
+                <label>チーム名</label>
+                <input type="text" id="inputTeamName" placeholder="例：チームA">
+            </div>
+            <label>受賞者名1</label>
+            <input type="text" id="inputRecipient1" value="山田 太郎">
+            <div class="input-notice">
+                ⚠️ 受賞者名は姓と名の間に必ず空欄（スペース）を入れてください<br>
+                <span class="input-notice-example">例：山田 太郎</span>
+            </div>
+        </div>
+        <div class="input-group team-only" style="display:none;">
+            <label>受賞者名2</label>
+            <input type="text" id="inputRecipient2" placeholder="二人目の名前">
+        </div>
+        <div class="input-group team-only" style="display:none;">
+            <label>受賞者名3</label>
+            <input type="text" id="inputRecipient3" placeholder="三人目の名前">
+        </div>
+
+        <!-- 通常モードの本文入力 -->
+        <div id="normalBodyInputs">
+            <div class="input-group">
+                <label>本文：主催者</label>
+                <div class="organizer-type-select">
+                    <label>
+                        <input type="radio" name="organizerType" value="主催" checked onchange="updateBody()">
+                        <span>主催</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="organizerType" value="後援" onchange="updateBody()">
+                        <span>後援</span>
+                    </label>
+                </div>
+                <input type="text" id="inputOrganizerName" placeholder="例：日本将棋連盟">
+            </div>
+            <div class="input-group">
+                <label>本文：大会名</label>
+                <input type="text" id="inputTournamentName" placeholder="例：竜王戦">
+            </div>
+        </div>
+
+        <!-- 中野杯専用入力（中野杯モードのみ表示） -->
+        <div id="nakanoBodyInputs" style="display:none;">
+            <div class="input-group">
+                <span class="nakano-badge">🏹 中野慶吉杯専用</span>
+                <label>回数（第○○回の数字部分）</label>
+                <input type="text" id="inputNakanoNum" value="○○" placeholder="例：三十">
+                <div class="input-notice">
+                    本文は自動で下記に固定されます：<br>
+                    <span class="input-notice-example">右は茨城県弓道連盟主催　第○○回中野慶吉杯記念弓道大会において…</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>日付</label>
+            <input type="text" id="inputDate" value="令和六年五月一日">
+        </div>
+        <div class="input-group">
+            <label>主催団体</label>
+            <input type="text" id="inputOrganization" value="株式会社 サンプル">
+            <div class="input-notice">
+                ⚠️ 団体名の区切りには必ず空欄を入れてください<br>
+                <span class="input-notice-example">例：株式会社 サンプル</span>
+            </div>
+        </div>
+        <div class="input-group">
+            <label>贈呈者</label>
+            <input type="text" id="inputSender" value="代表取締役 佐藤 次郎">
+            <div class="input-notice">
+                ⚠️ 役職・姓・名の間には必ず空欄を入れてください<br>
+                <span class="input-notice-example">例：代表取締役 佐藤 次郎</span>
+            </div>
+        </div>
+        <!-- フォント選択 -->
+        <div class="font-select-group" style="margin-top:20px;">
+            <label>フォント（書体）</label>
+            <div class="font-options" id="fontOptions">
+                <label class="font-option selected">
+                    <input type="radio" name="certFont" value="Yuji Syuku" checked>
+                    <span class="font-option-preview" style="font-family:'Yuji Syuku',serif;">賞</span>
+                    <span class="font-option-name">毛筆楷書体<br><span style="font-size:0.7rem;opacity:0.7;">書家の楷書を書体化。公式賞状の定番 ★</span></span>
+                </label>
+                <label class="font-option">
+                    <input type="radio" name="certFont" value="Shippori Mincho">
+                    <span class="font-option-preview" style="font-family:'Shippori Mincho',serif;">賞</span>
+                    <span class="font-option-name">しっぽり明朝<br><span style="font-size:0.7rem;opacity:0.7;">端正で読みやすい本格明朝体</span></span>
+                </label>
+                <label class="font-option">
+                    <input type="radio" name="certFont" value="Noto Serif JP">
+                    <span class="font-option-preview" style="font-family:'Noto Serif JP',serif;">賞</span>
+                    <span class="font-option-name">Noto Serif JP<br><span style="font-size:0.7rem;opacity:0.7;">安定感と視認性の高い明朝体</span></span>
+                </label>
+                <label class="font-option">
+                    <input type="radio" name="certFont" value="Zen Old Mincho">
+                    <span class="font-option-preview" style="font-family:'Zen Old Mincho',serif;">賞</span>
+                    <span class="font-option-name">禅 オールド明朝<br><span style="font-size:0.7rem;opacity:0.7;">古典的な旧字風。重厚な格調</span></span>
+                </label>
+            </div>
+
+        </div>
+        <button class="print-btn" onclick="window.print()">印刷</button>
+        <button class="pdf-btn" onclick="savePDF()">PDF保存 (高画質)</button>
+    </div><!-- /.controls -->
+
+    <!-- プレビュー（賞状本体） -->
+    <div class="preview-area" id="previewArea">
+        <div class="preview-outer" id="previewOuter">
+            <div class="preview-wrapper" id="previewWrapper">
+                <div class="certificate">
+                    <div class="border-frame"></div>
+
+                    <div class="cert-title">表彰状</div>
+
+                    <div class="cert-department" id="dispDepartment"></div>
+
+                    <div class="rank-recipient-wrapper">
+                        <div class="cert-rank" id="dispRank">優勝</div>
+
+                        <div class="cert-team" id="dispTeamName" style="display:none;"></div>
+
+                        <div class="recipients-container">
+                            <div class="cert-recipient"><span id="dispRecipient1">山田 太郎</span></div>
+                            <div class="cert-recipient" id="divRecipient2" style="display:none;"><span id="dispRecipient2"></span></div>
+                            <div class="cert-recipient" id="divRecipient3" style="display:none;"><span id="dispRecipient3"></span></div>
+                        </div>
+                    </div>
+
+                    <div class="cert-body" id="dispBody">右は○○主催
+○○大会において
+頭書の成績を収めたので
+ここにこれを賞します</div>
+
+                    <div class="cert-footer">
+                        <div class="cert-date" id="dispDate">令和六年五月一日</div>
+                        <div class="cert-organization" id="dispOrganization">株式会社 サンプル</div>
+                        <div class="cert-sender" id="dispSender">代表取締役 佐藤 次郎</div>
+                    </div>
+                </div>
+            </div><!-- /.preview-wrapper -->
+        </div><!-- /.preview-outer -->
+    </div>
+    <script src="script.js"></script>
+
+</body>
+</html>
