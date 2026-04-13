@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import VideoUploader from './components/VideoUploader';
 import VideoAnalyzer from './components/VideoAnalyzer';
+import ShahouHassetsu from './components/ShahouHassetsu';
 import './App.css';
 
 function App() {
@@ -33,6 +34,8 @@ function App() {
             <VideoAnalyzer videoSrc={videoSrc} />
           </section>
         )}
+
+        <ShahouHassetsu />
       </main>
     </div>
   );
