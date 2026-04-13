@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>射法八節 3D 解剖ビューア</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<div class="topbar">
+  <button class="sbtn on" onclick="go(0)">①足踏み</button>
+  <button class="sbtn"    onclick="go(1)">②胴造り</button>
+  <button class="sbtn"    onclick="go(2)">③弓構え</button>
+  <button class="sbtn"    onclick="go(3)">④打起し</button>
+  <button class="sbtn"    onclick="go(4)">⑤引分け</button>
+  <button class="sbtn"    onclick="go(5)">⑥会</button>
+  <button class="sbtn"    onclick="go(6)">⑦離れ</button>
+  <button class="sbtn"    onclick="go(7)">⑧残心</button>
+</div>
+<div class="canvas-box">
+  <canvas id="c3"></canvas>
+  <div class="autoplay-box">
+    <button class="lbtn" id="lb-auto" onclick="toggleAutoplay()">▶ 自動再生</button>
+  </div>
+  <div class="overlay">
+    <button class="lbtn on" id="lb-sk" onclick="tl('sk')">骨格</button>
+    <button class="lbtn on" id="lb-mu" onclick="tl('mu')">筋肉活性</button>
+    <button class="lbtn on" id="lb-jo" onclick="tl('jo')">関節</button>
+  </div>
+  <div class="hint-txt">ドラッグ回転 / スクロールズーム</div>
+  <div id="glb-status"></div>
+</div>
+<div class="bottom">
+  <div class="pname" id="pname">足踏み</div>
+  <div class="pdesc" id="pdesc"></div>
+  <div class="sec">主要筋肉（明色=主働 / 淡色=協働）— クリックで詳細表示</div>
+  <div class="chips" id="chips"></div>
+  <div class="muscle-detail" id="muscle-detail">
+    <div class="muscle-en" id="muscle-en"></div>
+    <div class="muscle-func" id="muscle-func"></div>
+  </div>
+  <div class="sec" style="margin-top:7px">解剖学的ポイント</div>
+  <div class="blist" id="blist"></div>
+  <div class="ref" id="ref"></div>
+  <div class="hint-sel" id="hint-sel">↑ クリックでフォーカス解除 / 別の筋肉をクリックで切替</div>
+</div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
